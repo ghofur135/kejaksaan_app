@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Input Data PIDSUS - Aplikasi Data PIDUM & PIDSUS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-plus-circle"></i> Input Data PIDSUS (Pidana Khusus)</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('input_pidsus') }}">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="no" class="form-label">NO</label>
+                                <input type="number" class="form-control" id="no" name="no" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="periode" class="form-label">PERIODE</label>
+                                <input type="text" class="form-control" id="periode" name="periode" value="1" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="tanggal" class="form-label">TANGGAL</label>
+                                <input type="date" class="form-control" id="tanggal" name="tanggal" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="jenis_perkara" class="form-label">JENIS PERKARA</label>
+                                <select class="form-select" id="jenis_perkara" name="jenis_perkara" required>
+                                    <option value="">Pilih Jenis Perkara</option>
+                                    <option value="TIPIKOR">TIPIKOR</option>
+                                    <option value="KEPABEANAN">KEPABEANAN</option>
+                                    <option value="CUKAI">CUKAI</option>
+                                    <option value="MIGAS">MIGAS</option>
+                                    <option value="KAYU">KAYU</option>
+                                    <option value="LAIN-LAIN">LAIN-LAIN</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="penyidikan" class="form-label">PENYIDIKAN</label>
+                                <select class="form-select" id="penyidikan" name="penyidikan">
+                                    <option value="0">0</option>
+                                    <option value="1">1</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="penuntutan" class="form-label">PENUNTUTAN</label>
+                                <select class="form-select" id="penuntutan" name="penuntutan">
+                                    <option value="0">0</option>
+                                    <option value="1">1</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="keterangan" class="form-label">KETERANGAN</label>
+                                <input type="text" class="form-control" id="keterangan" name="keterangan" placeholder="Tambahkan keterangan jika diperlukan">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Kembali
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Simpan Data
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if data %}
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-table"></i> Data PIDSUS yang Telah Diinput</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>NO</th>
+                                <th>PERIODE</th>
+                                <th>TANGGAL</th>
+                                <th>JENIS PERKARA</th>
+                                <th>PENYIDIKAN</th>
+                                <th>PENUNTUTAN</th>
+                                <th>KETERANGAN</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in data %}
+                            <tr>
+                                <td>{{ item.NO }}</td>
+                                <td>{{ item.PERIODE }}</td>
+                                <td>{{ item.TANGGAL }}</td>
+                                <td>{{ item['JENIS PERKARA'] }}</td>
+                                <td>{{ item.PENYIDIKAN }}</td>
+                                <td>{{ item.PENUNTUTAN }}</td>
+                                <td>{{ item.KETERANGAN }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-3">
+                    <a href="{{ url_for('export_pidsus_excel') }}" class="btn btn-success">
+                        <i class="fas fa-file-excel"></i> Export ke Excel
+                    </a>
+                    <a href="{{ url_for('pidsus_charts') }}" class="btn btn-info">
+                        <i class="fas fa-chart-bar"></i> Lihat Grafik
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-increment NO field
+    const noField = document.getElementById('no');
+    const currentMax = {{ data|length }};
+    if (currentMax > 0) {
+        noField.value = currentMax + 1;
+    } else {
+        noField.value = 1;
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

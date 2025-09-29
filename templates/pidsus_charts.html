@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Grafik PIDSUS - Aplikasi Data PIDUM & PIDSUS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4><i class="fas fa-chart-bar"></i> Grafik Analisis Data PIDSUS</h4>
+                <div>
+                    <a href="{{ url_for('view_pidsus') }}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-table"></i> Lihat Data
+                    </a>
+                    <a href="{{ url_for('input_pidsus') }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus"></i> Tambah Data
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if charts %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <h5>Jumlah Kasus Berdasarkan Jenis Perkara</h5>
+                                <img src="data:image/png;base64,{{ charts.jenis_perkara }}" alt="Grafik Jenis Perkara">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <h5>Distribusi Penyidikan</h5>
+                                <img src="data:image/png;base64,{{ charts.penyidikan }}" alt="Grafik Penyidikan">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-info-circle"></i> Informasi Grafik</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6>Grafik Jenis Perkara</h6>
+                                            <p>Grafik ini menunjukkan distribusi jumlah kasus berdasarkan jenis perkara pidana khusus. Semakin tinggi bar, semakin banyak kasus untuk jenis perkara tersebut.</p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6>Grafik Penyidikan</h6>
+                                            <p>Grafik pie ini menunjukkan persentase kasus yang sedang dalam tahap penyidikan versus yang tidak dalam tahap penyidikan.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('export_pidsus_excel') }}" class="btn btn-success">
+                                    <i class="fas fa-file-excel"></i> Export Data ke Excel
+                                </a>
+                                <button class="btn btn-primary" onclick="window.print()">
+                                    <i class="fas fa-print"></i> Cetak Grafik
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+                        <h5>Belum ada data untuk menampilkan grafik</h5>
+                        <p class="text-muted">Silakan tambahkan data PIDSUS terlebih dahulu</p>
+                        <a href="{{ url_for('input_pidsus') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Tambah Data
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+// Add any chart-specific JavaScript here
+document.addEventListener('DOMContentLoaded', function() {
+    // Add click handlers for chart interactions if needed
+    const chartImages = document.querySelectorAll('.chart-container img');
+    chartImages.forEach(img => {
+        img.style.cursor = 'pointer';
+        img.addEventListener('click', function() {
+            // Open chart in new window for better viewing
+            const newWindow = window.open('', '_blank');
+            newWindow.document.write('<html><head><title>Grafik</title></head><body style="margin:0; display:flex; justify-content:center; align-items:center; min-height:100vh; background:#f0f0f0;"><img src="' + this.src + '" style="max-width:100%; max-height:100%; box-shadow:0 0 20px rgba(0,0,0,0.1);"></body></html>');
+        });
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}
