@@ -13,9 +13,57 @@ from database import (
     init_database, insert_pidum_data, insert_pidsus_data,
     get_all_pidum_data, get_all_pidsus_data,
     get_pidum_data_for_export, get_pidsus_data_for_export,
-    get_database_stats
+    get_database_stats, get_pidum_report_data
 )
 from import_helper import process_import_file, get_jenis_perkara_suggestions, prepare_import_data
+
+def generate_pidum_chart(report_data):
+    """Generate chart data for PIDUM report"""
+    # Create figure
+    plt.figure(figsize=(12, 6))
+    
+    # Prepare data for chart - show all jenis perkara including those with value 0
+    jenis_perkara = [item['jenis_perkara'] for item in report_data]
+    jumlah_data = [item['JUMLAH'] for item in report_data]
+    
+    if not jenis_perkara:  # If no data at all, create empty chart with all categories
+        jenis_perkara = ['NARKOBA', 'PERKARA ANAK', 'KESUSILAAN', 'JUDI', 'KDRT', 'OHARDA', 'PERKARA LAINNYA']
+        jumlah_data = [0] * 7
+    
+    # Create bar chart
+    bars = plt.bar(range(len(jenis_perkara)), jumlah_data, color='#4472C4')
+    
+    # Customize chart
+    plt.title('Grafik PIDUM', fontsize=14, fontweight='bold', pad=20)
+    plt.xlabel('Jenis Perkara', fontsize=12)
+    plt.ylabel('Jumlah', fontsize=12)
+    
+    # Set x-axis labels
+    plt.xticks(range(len(jenis_perkara)), jenis_perkara, rotation=45, ha='right')
+    
+    # Add value labels on bars (show all values, including 0)
+    for i, (bar, value) in enumerate(zip(bars, jumlah_data)):
+        plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.1, 
+                str(value), ha='center', va='bottom', fontweight='bold')
+    
+    # Set y-axis to start from 0 and add some padding
+    max_value = max(jumlah_data) if jumlah_data and max(jumlah_data) > 0 else 5
+    plt.ylim(0, max_value + 1)
+    
+    # Add grid for better readability
+    plt.grid(axis='y', alpha=0.3)
+    
+    # Adjust layout to prevent label cutoff
+    plt.tight_layout()
+    
+    # Convert to base64 string
+    img_buffer = io.BytesIO()
+    plt.savefig(img_buffer, format='png', dpi=150, bbox_inches='tight')
+    img_buffer.seek(0)
+    chart_base64 = base64.b64encode(img_buffer.getvalue()).decode()
+    plt.close()
+    
+    return chart_base64
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
@@ -56,9 +104,8 @@ def input_pidum():
                 'PERIODE': request.form['periode'],
                 'TANGGAL': request.form['tanggal'],
                 'JENIS PERKARA': request.form['jenis_perkara'],
-                'PRA PENUTUTAN': request.form['pra_penututan'],
-                'PENUNTUTAN': request.form['penuntutan'],
-                'UPAYA HUKUM': request.form['upaya_hukum']
+                'TAHAPAN_PENANGANAN': 'PRA PENUNTUTAN',  # Default value for manual input
+                'KETERANGAN': ''  # Default empty for manual input
             }
             
             # Insert to database
@@ -109,6 +156,49 @@ def view_pidum():
 def view_pidsus():
     data = get_pidsus_data_for_export()
     return render_template('view_pidsus.html', data=data)
+
+@app.route('/laporan_pidum')
+def laporan_pidum():
+    # Get filter parameters
+    bulan = request.args.get('bulan', type=int)
+    tahun = request.args.get('tahun', type=int)
+    
+    # Default to current month/year if not specified
+    from datetime import datetime
+    if not bulan:
+        bulan = datetime.now().month
+    if not tahun:
+        tahun = datetime.now().year
+    
+    # Get report data
+    report_data = get_pidum_report_data(bulan, tahun)
+    
+    # Calculate totals
+    total_pra_penuntutan = sum(item['PRA PENUNTUTAN'] for item in report_data)
+    total_penuntutan = sum(item['PENUNTUTAN'] for item in report_data)
+    total_upaya_hukum = sum(item['UPAYA HUKUM'] for item in report_data)
+    total_keseluruhan = sum(item['JUMLAH'] for item in report_data)
+    
+    # Generate chart data
+    chart_data = generate_pidum_chart(report_data)
+    
+    # Month names for display
+    month_names = {
+        1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
+        5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
+        9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
+    }
+    
+    return render_template('laporan_pidum.html', 
+                         report_data=report_data,
+                         bulan=bulan, 
+                         tahun=tahun,
+                         bulan_nama=month_names.get(bulan, 'Tidak diketahui'),
+                         total_pra_penuntutan=total_pra_penuntutan,
+                         total_penuntutan=total_penuntutan,
+                         total_upaya_hukum=total_upaya_hukum,
+                         total_keseluruhan=total_keseluruhan,
+                         chart_data=chart_data)
 
 @app.route('/export_pidum_excel')
 def export_pidum_excel():
@@ -321,6 +411,143 @@ def database_info():
     <p><a href="/">Back to Home</a></p>
     """
 
+@app.route('/import_tahapan/<tahapan>', methods=['GET', 'POST'])
+def import_tahapan(tahapan):
+    """Route untuk import data berdasarkan tahapan penanganan perkara"""
+    # Map tahapan URL ke tahapan database
+    tahapan_mapping = {
+        'pra_penuntutan': 'PRA PENUNTUTAN',
+        'penuntutan': 'PENUNTUTAN', 
+        'upaya_hukum': 'UPAYA HUKUM'
+    }
+    
+    if tahapan not in tahapan_mapping:
+        flash('Tahapan tidak valid', 'error')
+        return redirect(url_for('input_pidum'))
+    
+    tahapan_penanganan = tahapan_mapping[tahapan]
+    
+    if request.method == 'POST':
+        # Check if file is uploaded
+        if 'file' not in request.files:
+            flash('Tidak ada file yang dipilih', 'error')
+            return redirect(request.url)
+        
+        file = request.files['file']
+        if file.filename == '':
+            flash('Tidak ada file yang dipilih', 'error')
+            return redirect(request.url)
+        
+        if file:
+            # Process the uploaded file with tahapan
+            result = process_import_file(file, tahapan_penanganan)
+            
+            if result['success']:
+                # Store import data in session for preview
+                session['import_data'] = result['data']
+                session['import_filename'] = file.filename
+                session['import_tahapan'] = tahapan_penanganan
+                
+                # Add suggestions for jenis perkara
+                for i, row in enumerate(result['data']):
+                    original_jenis = row.get('JENIS_PERKARA_ORIGINAL', '')
+                    suggestion = get_jenis_perkara_suggestions(original_jenis)
+                    result['data'][i]['SUGGESTED_JENIS_PERKARA'] = suggestion
+                
+                return render_template('import_tahapan_preview.html', 
+                                     import_data=result['data'],
+                                     filename=file.filename,
+                                     total_rows=result['total_rows'],
+                                     tahapan_penanganan=tahapan_penanganan)
+            else:
+                flash(f'Error memproses file: {result["error"]}', 'error')
+                return redirect(request.url)
+    
+    # Render template berdasarkan tahapan
+    template_mapping = {
+        'pra_penuntutan': 'import_pra_penuntutan.html',
+        'penuntutan': 'import_penuntutan.html',
+        'upaya_hukum': 'import_upaya_hukum.html'
+    }
+    
+    return render_template(template_mapping[tahapan])
+
+@app.route('/confirm_import_tahapan', methods=['POST'])
+def confirm_import_tahapan():
+    """Confirm and process import with selected jenis perkara for specific tahapan"""
+    import_data = session.get('import_data', [])
+    tahapan_penanganan = session.get('import_tahapan', 'PRA PENUNTUTAN')
+    
+    if not import_data:
+        flash('Tidak ada data import yang tersedia', 'error')
+        return redirect(url_for('input_pidum'))
+    
+    try:
+        # Get data from form
+        prepared_data = []
+        
+        for i, original_row in enumerate(import_data):
+            # Check if this row should be included (not removed)
+            jenis_perkara_key = f'jenis_perkara_{i}'
+            if jenis_perkara_key not in request.form:
+                continue  # Skip removed rows
+            
+            # Get form data for this row
+            periode = request.form.get(f'periode_{i}', '1')
+            tanggal = request.form.get(f'tanggal_{i}', datetime.now().strftime('%Y-%m-%d'))
+            jenis_perkara = request.form.get(jenis_perkara_key, 'PERKARA LAINNYA')
+            keterangan = request.form.get(f'keterangan_{i}', '')
+            
+            # Prepare data for database insertion
+            prepared_row = {
+                'NO': str(original_row.get('NO', i + 1)),
+                'PERIODE': str(periode),
+                'TANGGAL': tanggal,
+                'JENIS PERKARA': jenis_perkara,
+                'TAHAPAN_PENANGANAN': tahapan_penanganan,
+                'KETERANGAN': str(keterangan)
+            }
+            
+            prepared_data.append(prepared_row)
+        
+        # Insert data to database
+        success_count = 0
+        error_count = 0
+        error_details = []
+        
+        for data in prepared_data:
+            try:
+                insert_pidum_data(data)
+                success_count += 1
+            except Exception as e:
+                error_count += 1
+                error_details.append(f"Baris {data.get('NO', '?')}: {str(e)}")
+                print(f"Error inserting row {data.get('NO', '?')}: {e}")
+        
+        # Clear session data
+        session.pop('import_data', None)
+        session.pop('import_filename', None)
+        session.pop('import_tahapan', None)
+        
+        # Show results
+        if success_count > 0:
+            flash(f'Berhasil import {success_count} data {tahapan_penanganan}', 'success')
+            if error_count > 0:
+                flash(f'{error_count} data gagal diimport', 'warning')
+                # Optionally show error details
+                for error in error_details[:5]:  # Show max 5 errors
+                    flash(error, 'warning')
+        else:
+            flash('Tidak ada data yang berhasil diimport', 'error')
+            if error_details:
+                for error in error_details[:3]:  # Show max 3 errors
+                    flash(error, 'error')
+            
+    except Exception as e:
+        flash(f'Error saat import data: {str(e)}', 'error')
+    
+    return redirect(url_for('view_pidum'))
+
 @app.route('/import_pidum', methods=['GET', 'POST'])
 def import_pidum():
     """Route untuk import data PIDUM dari file Excel/CSV"""
@@ -384,19 +611,13 @@ def confirm_import_pidum():
             periode = request.form.get(f'periode_{i}', '1')
             tanggal = request.form.get(f'tanggal_{i}', datetime.now().strftime('%Y-%m-%d'))
             jenis_perkara = request.form.get(jenis_perkara_key, 'PERKARA LAINNYA')
-            pra_penututan = request.form.get(f'pra_penututan_{i}', '0')
-            penuntutan = request.form.get(f'penuntutan_{i}', '0')
-            upaya_hukum = request.form.get(f'upaya_hukum_{i}', '0')
             
             # Prepare data for database insertion
             prepared_row = {
                 'NO': str(original_row.get('NO', i + 1)),
                 'PERIODE': str(periode),
                 'TANGGAL': tanggal,
-                'JENIS PERKARA': jenis_perkara,
-                'PRA PENUTUTAN': str(pra_penututan),
-                'PENUNTUTAN': str(penuntutan),
-                'UPAYA HUKUM': str(upaya_hukum)
+                'JENIS PERKARA': jenis_perkara
             }
             
             prepared_data.append(prepared_row)

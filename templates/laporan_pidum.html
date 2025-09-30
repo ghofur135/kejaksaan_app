@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Laporan PIDUM - Aplikasi Data PIDUM & PIDSUS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4><i class="fas fa-chart-bar"></i> Laporan PIDUM - {{ bulan_nama }} {{ tahun }}</h4>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-outline-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                        <i class="fas fa-filter"></i> Filter Periode
+                    </button>
+                    <div class="dropdown-menu p-3" style="min-width: 300px;">
+                        <form method="GET" action="{{ url_for('laporan_pidum') }}">
+                            <div class="row">
+                                <div class="col-6">
+                                    <label class="form-label">Bulan</label>
+                                    <select name="bulan" class="form-select form-select-sm">
+                                        <option value="1" {{ 'selected' if bulan == 1 else '' }}>Januari</option>
+                                        <option value="2" {{ 'selected' if bulan == 2 else '' }}>Februari</option>
+                                        <option value="3" {{ 'selected' if bulan == 3 else '' }}>Maret</option>
+                                        <option value="4" {{ 'selected' if bulan == 4 else '' }}>April</option>
+                                        <option value="5" {{ 'selected' if bulan == 5 else '' }}>Mei</option>
+                                        <option value="6" {{ 'selected' if bulan == 6 else '' }}>Juni</option>
+                                        <option value="7" {{ 'selected' if bulan == 7 else '' }}>Juli</option>
+                                        <option value="8" {{ 'selected' if bulan == 8 else '' }}>Agustus</option>
+                                        <option value="9" {{ 'selected' if bulan == 9 else '' }}>September</option>
+                                        <option value="10" {{ 'selected' if bulan == 10 else '' }}>Oktober</option>
+                                        <option value="11" {{ 'selected' if bulan == 11 else '' }}>November</option>
+                                        <option value="12" {{ 'selected' if bulan == 12 else '' }}>Desember</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label">Tahun</label>
+                                    <select name="tahun" class="form-select form-select-sm">
+                                        {% for year in range(2020, 2031) %}
+                                        <option value="{{ year }}" {{ 'selected' if tahun == year else '' }}>{{ year }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-search"></i> Tampilkan
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Table Report -->
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead class="table-dark">
+                            <tr style="background-color: #e9ecef !important;">
+                                <th rowspan="2" style="color: #000000 !important; vertical-align: middle; text-align: center;">NO</th>
+                                <th rowspan="2" style="color: #000000 !important; vertical-align: middle; text-align: center;">BULAN</th>
+                                <th rowspan="2" style="color: #000000 !important; vertical-align: middle; text-align: center;">JENIS PERKARA</th>
+                                <th rowspan="2" style="color: #000000 !important; vertical-align: middle; text-align: center;">JUMLAH</th>
+                                <th colspan="3" style="color: #000000 !important; text-align: center;">TAHAPAN PENANGANAN</th>
+                            </tr>
+                            <tr style="background-color: #e9ecef !important;">
+                                <th style="color: #000000 !important; text-align: center;">PRA PENUNTUTAN</th>
+                                <th style="color: #000000 !important; text-align: center;">PENUNTUTAN</th>
+                                <th style="color: #000000 !important; text-align: center;">UPAYA HUKUM</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in report_data %}
+                            <tr>
+                                <td style="text-align: center;">{{ item.NO }}</td>
+                                <td style="text-align: center;">{{ bulan_nama.upper() }}</td>
+                                <td>{{ item.jenis_perkara }}</td>
+                                <td style="text-align: center;">{{ item.JUMLAH }}</td>
+                                <td style="text-align: center;">{{ item['PRA PENUNTUTAN'] }}</td>
+                                <td style="text-align: center;">{{ item.PENUNTUTAN }}</td>
+                                <td style="text-align: center;">{{ item['UPAYA HUKUM'] }}</td>
+                            </tr>
+                            {% endfor %}
+                            <!-- Totals Row -->
+                            <tr class="table-warning">
+                                <td colspan="3" style="text-align: center; font-weight: bold;">TOTAL</td>
+                                <td style="text-align: center; font-weight: bold;">{{ total_keseluruhan }}</td>
+                                <td style="text-align: center; font-weight: bold;">{{ total_pra_penuntutan }}</td>
+                                <td style="text-align: center; font-weight: bold;">{{ total_penuntutan }}</td>
+                                <td style="text-align: center; font-weight: bold;">{{ total_upaya_hukum }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Chart Section -->
+                <div class="mt-4">
+                    <h5><i class="fas fa-chart-bar"></i> Grafik PIDUM</h5>
+                    <div class="text-center">
+                        <img src="data:image/png;base64,{{ chart_data }}" alt="Grafik PIDUM" class="img-fluid" style="max-width: 100%; height: auto;">
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{{ url_for('view_pidum') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Kembali ke Data PIDUM
+                    </a>
+                    <div>
+                        <a href="{{ url_for('export_pidum_excel') }}?bulan={{ bulan }}&tahun={{ tahun }}" class="btn btn-success">
+                            <i class="fas fa-file-excel"></i> Export Excel
+                        </a>
+                        <button onclick="window.print()" class="btn btn-primary">
+                            <i class="fas fa-print"></i> Print Laporan
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    .btn, .dropdown, .card-header .btn-group {
+        display: none !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    .table {
+        font-size: 12px;
+    }
+    
+    .table th, .table td {
+        padding: 0.3rem !important;
+    }
+}
+</style>
+{% endblock %}

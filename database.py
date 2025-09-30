@@ -19,9 +19,8 @@ def init_database():
                 periode TEXT NOT NULL,
                 tanggal TEXT NOT NULL,
                 jenis_perkara TEXT NOT NULL,
-                pra_penututan TEXT NOT NULL,
-                penuntutan TEXT NOT NULL,
-                upaya_hukum TEXT NOT NULL,
+                tahapan_penanganan TEXT NOT NULL,
+                keterangan TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
@@ -58,10 +57,10 @@ def insert_pidum_data(data):
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO pidum_data (no, periode, tanggal, jenis_perkara, pra_penututan, penuntutan, upaya_hukum)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (data['NO'], data['PERIODE'], data['TANGGAL'], data['JENIS PERKARA'], 
-              data['PRA PENUTUTAN'], data['PENUNTUTAN'], data['UPAYA HUKUM']))
+            INSERT INTO pidum_data (no, periode, tanggal, jenis_perkara, tahapan_penanganan, keterangan)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (data['NO'], data['PERIODE'], data['TANGGAL'], data['JENIS PERKARA'],
+              data['TAHAPAN_PENANGANAN'], data['KETERANGAN']))
         conn.commit()
         return cursor.lastrowid
 
@@ -107,9 +106,8 @@ def get_pidum_data_for_export():
             'PERIODE': row['periode'],
             'TANGGAL': row['tanggal'],
             'JENIS PERKARA': row['jenis_perkara'],
-            'PRA PENUTUTAN': row['pra_penututan'],
-            'PENUNTUTAN': row['penuntutan'],
-            'UPAYA HUKUM': row['upaya_hukum']
+            'TAHAPAN PENANGANAN': row['tahapan_penanganan'],
+            'KETERANGAN': row['keterangan']
         })
     return export_data
 
@@ -159,3 +157,94 @@ def get_database_stats():
             'pidsus_count': pidsus_count,
             'database_path': DATABASE_PATH
         }
+
+def get_pidum_data_by_tahapan(tahapan_penanganan):
+    """Get PIDUM data filtered by tahapan penanganan"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM pidum_data WHERE tahapan_penanganan = ? ORDER BY created_at DESC', (tahapan_penanganan,))
+        rows = cursor.fetchall()
+        
+        # Convert to list of dictionaries (compatible with existing code)
+        return [dict(row) for row in rows]
+
+def get_pidum_report_data(bulan=None, tahun=None):
+    """Get PIDUM report data aggregated by jenis perkara and tahapan"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        
+        # Base query
+        query = '''
+            SELECT 
+                jenis_perkara,
+                tahapan_penanganan,
+                COUNT(*) as jumlah,
+                strftime('%m', tanggal) as bulan,
+                strftime('%Y', tanggal) as tahun
+            FROM pidum_data
+        '''
+        
+        params = []
+        conditions = []
+        
+        if bulan:
+            conditions.append("strftime('%m', tanggal) = ?")
+            params.append(f"{bulan:02d}")
+        
+        if tahun:
+            conditions.append("strftime('%Y', tanggal) = ?")
+            params.append(str(tahun))
+        
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+        
+        query += '''
+            GROUP BY jenis_perkara, tahapan_penanganan, strftime('%m', tanggal), strftime('%Y', tanggal)
+            ORDER BY jenis_perkara, tahapan_penanganan
+        '''
+        
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        
+        # Organize data by jenis_perkara
+        report_data = {}
+        
+        # Initialize all jenis perkara with zero values
+        jenis_perkara_list = ['NARKOBA', 'PERKARA ANAK', 'KESUSILAAN', 'JUDI', 'KDRT', 'OHARDA', 'PERKARA LAINNYA']
+        tahapan_list = ['PRA PENUNTUTAN', 'PENUNTUTAN', 'UPAYA HUKUM']
+        
+        for jenis in jenis_perkara_list:
+            report_data[jenis] = {
+                'jenis_perkara': jenis,
+                'PRA PENUNTUTAN': 0,
+                'PENUNTUTAN': 0,
+                'UPAYA HUKUM': 0,
+                'JUMLAH': 0
+            }
+        
+        # Fill in actual data
+        for row in rows:
+            jenis = row['jenis_perkara']
+            tahapan = row['tahapan_penanganan']
+            jumlah = row['jumlah']
+            
+            if jenis not in report_data:
+                report_data[jenis] = {
+                    'jenis_perkara': jenis,
+                    'PRA PENUNTUTAN': 0,
+                    'PENUNTUTAN': 0,
+                    'UPAYA HUKUM': 0,
+                    'JUMLAH': 0
+                }
+            
+            report_data[jenis][tahapan] = jumlah
+            report_data[jenis]['JUMLAH'] += jumlah
+        
+        # Convert to list and add row numbers
+        result = []
+        for i, jenis in enumerate(jenis_perkara_list, 1):
+            data = report_data[jenis]
+            data['NO'] = i
+            result.append(data)
+        
+        return result

@@ -1,26 +1,28 @@
 {% extends "base.html" %}
 
-{% block title %}Import Data PIDUM - Aplikasi Data PIDUM & PIDSUS{% endblock %}
+{% block title %}Import Data Upaya Hukum - Aplikasi Data PIDUM & PIDSUS{% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="col-md-12">
         <div class="card">
             <div class="card-header">
-                <h4><i class="fas fa-file-import"></i> Import Data PIDUM dari File Excel/CSV</h4>
+                <h4><i class="fas fa-file-import"></i> Import Data Tahapan Upaya Hukum</h4>
             </div>
             <div class="card-body">
                 <div class="alert alert-info">
-                    <h6><i class="fas fa-info-circle"></i> Panduan Import:</h6>
+                    <h6><i class="fas fa-info-circle"></i> Panduan Import Tahapan Upaya Hukum:</h6>
                     <ul class="mb-0">
                         <li>File yang didukung: Excel (.xlsx, .xls) dan CSV (.csv)</li>
-                        <li>Pastikan file memiliki kolom: NO, PERIODE, TANGGAL, JENIS PERKARA</li>
+                        <li>Kolom yang diperlukan: <strong>NO, PERIODE, TANGGAL, JENIS PERKARA, KETERANGAN</strong></li>
+                        <li>KETERANGAN berisi informasi pasal pelanggaran atau detail lainnya</li>
+                        <li>Data akan disimpan sebagai tahapan <strong>Upaya Hukum</strong></li>
                         <li>Setelah upload, Anda dapat memilih jenis perkara yang sesuai untuk setiap data</li>
-                        <li>Data akan ditampilkan untuk preview sebelum disimpan ke database</li>
                     </ul>
                 </div>
                 
                 <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="tahapan" value="UPAYA HUKUM">
                     <div class="mb-3">
                         <label for="file" class="form-label">Pilih File Excel/CSV</label>
                         <input type="file" class="form-control" id="file" name="file" 
@@ -52,7 +54,7 @@
                 <h5><i class="fas fa-download"></i> Template Format File</h5>
             </div>
             <div class="card-body">
-                <p>Untuk memudahkan import, gunakan format kolom berikut:</p>
+                <p>Untuk memudahkan import tahapan Upaya Hukum, gunakan format kolom berikut:</p>
                 <div class="table-responsive">
                     <table class="table table-bordered table-sm">
                         <thead class="table-dark" style="background-color: #e9ecef !important;">
@@ -61,6 +63,7 @@
                                 <th style="color: #000000 !important;">PERIODE</th>
                                 <th style="color: #000000 !important;">TANGGAL</th>
                                 <th style="color: #000000 !important;">JENIS PERKARA</th>
+                                <th style="color: #000000 !important;">KETERANGAN</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -69,12 +72,14 @@
                                 <td>1</td>
                                 <td>2025-09-30</td>
                                 <td>NARKOBA</td>
+                                <td>Pasal 112 UU No. 35 Tahun 2009</td>
                             </tr>
                             <tr>
                                 <td>2</td>
                                 <td>1</td>
                                 <td>2025-09-30</td>
                                 <td>KESUSILAAN</td>
+                                <td>Pasal 289 KUHP</td>
                             </tr>
                         </tbody>
                     </table>

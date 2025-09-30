@@ -34,9 +34,6 @@
                                     <th>PERIODE</th>
                                     <th>TANGGAL</th>
                                     <th>JENIS PERKARA</th>
-                                    <th>PRA PENUTUTAN</th>
-                                    <th>PENUNTUTAN</th>
-                                    <th>UPAYA HUKUM</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -48,9 +45,6 @@
                                     <td>
                                         <span class="badge bg-secondary">{{ item['JENIS PERKARA'] }}</span>
                                     </td>
-                                    <td>{{ item['PRA PENUTUTAN'] }}</td>
-                                    <td>{{ item.PENUNTUTAN }}</td>
-                                    <td>{{ item['UPAYA HUKUM'] }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -62,35 +56,11 @@
                         <div class="col-md-12">
                             <h5>Ringkasan Statistik</h5>
                             <div class="row">
-                                <div class="col-md-3">
+                                <div class="col-md-12">
                                     <div class="card bg-light">
                                         <div class="card-body text-center">
                                             <h6>Total Kasus</h6>
                                             <h3 class="text-primary">{{ data|length }}</h3>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="card bg-light">
-                                        <div class="card-body text-center">
-                                            <h6>Total Pra Penututan</h6>
-                                            <h3 class="text-success">{{ data|sum_numeric('PRA PENUTUTAN') }}</h3>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="card bg-light">
-                                        <div class="card-body text-center">
-                                            <h6>Total Penuntutan</h6>
-                                            <h3 class="text-warning">{{ data|sum_numeric('PENUNTUTAN') }}</h3>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="card bg-light">
-                                        <div class="card-body text-center">
-                                            <h6>Total Upaya Hukum</h6>
-                                            <h3 class="text-danger">{{ data|sum_numeric('UPAYA HUKUM') }}</h3>
                                         </div>
                                     </div>
                                 </div>

@@ -9,7 +9,7 @@ def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'csv', 'xlsx', 'xls'}
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def process_import_file(file):
+def process_import_file(file, tahapan_penanganan=None):
     """Process uploaded file and return data for preview"""
     try:
         filename = secure_filename(file.filename)
@@ -36,12 +36,8 @@ def process_import_file(file):
                 'PERIODE': '',
                 'TANGGAL': '',
                 'JENIS_PERKARA_ORIGINAL': '',
-                'NAMA_TERSANGKA': '',
-                'INSTANSI': '',
                 'KETERANGAN': '',
-                'PRA_PENUTUTAN': 0,
-                'PENUNTUTAN': 0,
-                'UPAYA_HUKUM': 0
+                'TAHAPAN_PENANGANAN': tahapan_penanganan or 'PRA PENUNTUTAN'
             }
             
             for key, value in row.items():
@@ -58,27 +54,8 @@ def process_import_file(file):
                     std_row['TANGGAL'] = clean_value
                 elif any(keyword in clean_key for keyword in ['JENIS', 'KATEGORI', 'TYPE']):
                     std_row['JENIS_PERKARA_ORIGINAL'] = clean_value
-                elif any(keyword in clean_key for keyword in ['NAMA', 'TERSANGKA', 'SUSPECT', 'IDENTITAS']):
-                    std_row['NAMA_TERSANGKA'] = clean_value
-                elif any(keyword in clean_key for keyword in ['INSTANSI', 'POLRES', 'POLDA', 'UNIT']):
-                    std_row['INSTANSI'] = clean_value
-                elif any(keyword in clean_key for keyword in ['KETERANGAN', 'DESCRIPTION', 'PASAL', 'NOTE']):
+                elif any(keyword in clean_key for keyword in ['KETERANGAN', 'DESCRIPTION', 'PASAL', 'NOTE', 'PELANGGARAN']):
                     std_row['KETERANGAN'] = clean_value
-                elif 'PRA' in clean_key and 'PENUTUTAN' in clean_key:
-                    try:
-                        std_row['PRA_PENUTUTAN'] = int(float(clean_value)) if clean_value.replace('.','').isdigit() else 0
-                    except:
-                        std_row['PRA_PENUTUTAN'] = 0
-                elif 'PENUNTUTAN' in clean_key and 'PRA' not in clean_key:
-                    try:
-                        std_row['PENUNTUTAN'] = int(float(clean_value)) if clean_value.replace('.','').isdigit() else 0
-                    except:
-                        std_row['PENUNTUTAN'] = 0
-                elif 'UPAYA' in clean_key and 'HUKUM' in clean_key:
-                    try:
-                        std_row['UPAYA_HUKUM'] = int(float(clean_value)) if clean_value.replace('.','').isdigit() else 0
-                    except:
-                        std_row['UPAYA_HUKUM'] = 0
             
             # If no explicit NO, use row index + 1
             if not std_row['NO']:
@@ -168,9 +145,8 @@ def prepare_import_data(import_data, jenis_perkara_mapping):
             'PERIODE': str(row.get('PERIODE', '')),
             'TANGGAL': tanggal,
             'JENIS PERKARA': selected_jenis_perkara,
-            'PRA PENUTUTAN': str(row.get('PRA_PENUTUTAN', 0)),
-            'PENUNTUTAN': str(row.get('PENUNTUTAN', 0)),
-            'UPAYA HUKUM': str(row.get('UPAYA_HUKUM', 0))
+            'TAHAPAN_PENANGANAN': row.get('TAHAPAN_PENANGANAN', 'PRA PENUNTUTAN'),
+            'KETERANGAN': str(row.get('KETERANGAN', ''))
         }
         
         prepared_data.append(prepared_row)
