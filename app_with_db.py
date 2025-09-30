@@ -96,6 +96,12 @@ def index():
 
 @app.route('/input_pidum', methods=['GET', 'POST'])
 def input_pidum():
+    # Redirect langsung ke halaman pilihan import data PIDUM
+    # Bisa pilih dari dropdown import tahapan penanganan
+    if request.method == 'GET':
+        return render_template('pilihan_import_pidum.html')
+    
+    # Jika POST, proses input manual
     if request.method == 'POST':
         try:
             # Get form data
@@ -113,6 +119,33 @@ def input_pidum():
             
             flash('Data PIDUM berhasil ditambahkan!', 'success')
             return redirect(url_for('input_pidum'))
+        except Exception as e:
+            flash(f'Terjadi kesalahan: {str(e)}', 'error')
+    
+    # Get data from database untuk fallback
+    data = get_pidum_data_for_export()
+    return render_template('pilihan_import_pidum.html', data=data)
+
+@app.route('/manual_input_pidum', methods=['GET', 'POST'])
+def manual_input_pidum():
+    """Route untuk input manual data PIDUM (form asli)"""
+    if request.method == 'POST':
+        try:
+            # Get form data
+            data = {
+                'NO': request.form['no'],
+                'PERIODE': request.form['periode'],
+                'TANGGAL': request.form['tanggal'],
+                'JENIS PERKARA': request.form['jenis_perkara'],
+                'TAHAPAN_PENANGANAN': 'PRA PENUNTUTAN',  # Default value for manual input
+                'KETERANGAN': request.form.get('keterangan', '')  # Get keterangan from form
+            }
+            
+            # Insert to database
+            insert_pidum_data(data)
+            
+            flash('Data PIDUM berhasil ditambahkan!', 'success')
+            return redirect(url_for('manual_input_pidum'))
         except Exception as e:
             flash(f'Terjadi kesalahan: {str(e)}', 'error')
     

@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Pilihan Import Data PIDUM - Aplikasi Data PIDUM & PIDSUS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-file-import"></i> Pilihan Import Data PIDUM (Pidana Umum)</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle"></i> Pilih Tahapan Penanganan Perkara:</h6>
+                    <p class="mb-0">
+                        Silakan pilih tahapan penanganan perkara yang sesuai dengan data yang akan Anda import.
+                        Setiap tahapan memiliki proses import yang terpisah untuk memudahkan pengelolaan data.
+                    </p>
+                </div>
+                
+                <div class="row mt-4">
+                    <!-- Pra Penuntutan -->
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-file-alt"></i> Pra Penuntutan
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="card-text">Import data untuk tahapan Pra Penuntutan dalam proses penanganan perkara pidana umum.</p>
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-check text-success"></i> Format: Excel/CSV</li>
+                                    <li><i class="fas fa-check text-success"></i> Kolom: NO, PERIODE, TANGGAL, JENIS PERKARA, KETERANGAN</li>
+                                    <li><i class="fas fa-check text-success"></i> Preview data sebelum import</li>
+                                </ul>
+                            </div>
+                            <div class="card-footer">
+                                <a href="{{ url_for('import_tahapan', tahapan='pra_penuntutan') }}" class="btn btn-primary btn-block">
+                                    <i class="fas fa-upload"></i> Import Pra Penuntutan
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Penuntutan -->
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header bg-warning text-dark">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-gavel"></i> Penuntutan
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="card-text">Import data untuk tahapan Penuntutan dalam proses penanganan perkara pidana umum.</p>
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-check text-success"></i> Format: Excel/CSV</li>
+                                    <li><i class="fas fa-check text-success"></i> Kolom: NO, PERIODE, TANGGAL, JENIS PERKARA, KETERANGAN</li>
+                                    <li><i class="fas fa-check text-success"></i> Preview data sebelum import</li>
+                                </ul>
+                            </div>
+                            <div class="card-footer">
+                                <a href="{{ url_for('import_tahapan', tahapan='penuntutan') }}" class="btn btn-warning btn-block">
+                                    <i class="fas fa-upload"></i> Import Penuntutan
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Upaya Hukum -->
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-balance-scale"></i> Upaya Hukum
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="card-text">Import data untuk tahapan Upaya Hukum dalam proses penanganan perkara pidana umum.</p>
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-check text-success"></i> Format: Excel/CSV</li>
+                                    <li><i class="fas fa-check text-success"></i> Kolom: NO, PERIODE, TANGGAL, JENIS PERKARA, KETERANGAN</li>
+                                    <li><i class="fas fa-check text-success"></i> Preview data sebelum import</li>
+                                </ul>
+                            </div>
+                            <div class="card-footer">
+                                <a href="{{ url_for('import_tahapan', tahapan='upaya_hukum') }}" class="btn btn-success btn-block">
+                                    <i class="fas fa-upload"></i> Import Upaya Hukum
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Additional Options -->
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-cogs"></i> Opsi Lainnya</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6><i class="fas fa-file-excel"></i> Template Format</h6>
+                                        <p class="small text-muted">Download template Excel/CSV untuk memudahkan persiapan data import.</p>
+                                        <a href="{{ url_for('static', filename='sample_import_tahapan.csv') }}" class="btn btn-outline-info btn-sm">
+                                            <i class="fas fa-download"></i> Download Template CSV
+                                        </a>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6><i class="fas fa-keyboard"></i> Input Manual</h6>
+                                        <p class="small text-muted">Input data PIDUM secara manual satu per satu menggunakan form.</p>
+                                        <a href="{{ url_for('manual_input_pidum') }}" class="btn btn-outline-secondary btn-sm">
+                                            <i class="fas fa-edit"></i> Input Manual
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Navigation -->
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Kembali ke Beranda
+                    </a>
+                    <div>
+                        <a href="{{ url_for('view_pidum') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-eye"></i> Lihat Data PIDUM
+                        </a>
+                        <a href="{{ url_for('laporan_pidum') }}" class="btn btn-outline-success">
+                            <i class="fas fa-chart-bar"></i> Laporan PIDUM
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.btn-block {
+    width: 100%;
+}
+
+.card {
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.list-unstyled li {
+    margin-bottom: 0.25rem;
+}
+
+.card-footer .btn {
+    font-weight: 600;
+}
+</style>
+{% endblock %}
