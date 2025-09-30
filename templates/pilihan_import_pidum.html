@@ -140,6 +140,62 @@
     </div>
 </div>
 
+<!-- PDF Conversion Section -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-file-pdf"></i> Konversi PDF ke CSV
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h5>Konversi Dokumen PDF yang Berisi Tabel</h5>
+                        <p class="text-muted">
+                            Fitur ini memungkinkan Anda mengkonversi file PDF yang berisi tabel data 
+                            menjadi format CSV yang dapat diimport ke sistem. Sangat berguna untuk 
+                            digitalisasi dokumen fisik atau laporan dalam format PDF.
+                        </p>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-check-circle text-success"></i> Fitur Utama:</h6>
+                                <ul class="small">
+                                    <li>Support multiple PDF processing libraries</li>
+                                    <li>Automatic table detection and extraction</li>
+                                    <li>Data cleaning and standardization</li>
+                                    <li>Preview hasil konversi</li>
+                                    <li>Direct import ke tahapan pilihan</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-info-circle text-info"></i> Format Support:</h6>
+                                <ul class="small">
+                                    <li>PDF dengan tabel terstruktur</li>
+                                    <li>Multi-page PDF documents</li>
+                                    <li>Berbagai layout tabel</li>
+                                    <li>Output: CSV format standar</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <div class="p-3">
+                            <i class="fas fa-file-pdf fa-4x text-danger mb-3"></i>
+                            <h6>Upload PDF</h6>
+                            <p class="small text-muted">Pilih file PDF yang berisi tabel data untuk dikonversi</p>
+                            <a href="{{ url_for('convert_pdf_to_csv') }}" class="btn btn-danger btn-lg">
+                                <i class="fas fa-magic"></i> Konversi PDF
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
 .btn-block {
     width: 100%;

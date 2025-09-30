@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}Hasil Konversi PDF - Aplikasi Data PIDUM & PIDSUS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-check-circle text-success"></i> Hasil Konversi PDF ke CSV</h4>
+                <small class="text-muted">File: {{ original_filename }} | Total: {{ tables|length }} tabel</small>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-success">
+                    <h6><i class="fas fa-thumbs-up"></i> Konversi Berhasil!</h6>
+                    <p class="mb-0">
+                        PDF berhasil dikonversi menjadi format CSV. 
+                        Ditemukan {{ tables|length }} tabel yang siap untuk diimport.
+                    </p>
+                </div>
+
+                <!-- Preview Tables -->
+                {% for table in tables %}
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h6>📊 Tabel {{ loop.index }} - Preview Data (5 baris pertama)</h6>
+                        <small class="text-muted">Total baris: {{ table.shape[0] }} | Total kolom: {{ table.shape[1] }}</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-sm">
+                                <thead class="table-dark">
+                                    <tr>
+                                        {% for col in table.columns %}
+                                        <th>{{ col }}</th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for _, row in table.head().iterrows() %}
+                                    <tr>
+                                        {% for value in row %}
+                                        <td>{{ value if value != 'nan' else '' }}</td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        {% if table.shape[0] > 5 %}
+                        <p class="text-muted small">
+                            ... dan {{ table.shape[0] - 5 }} baris lainnya
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+
+                <!-- Action Buttons -->
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-download"></i> Download & Import</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <!-- Download Section -->
+                                    <div class="col-md-6">
+                                        <h6><i class="fas fa-file-csv text-success"></i> Download File CSV</h6>
+                                        <p class="small text-muted">Download hasil konversi untuk diedit atau disimpan</p>
+                                        <a href="{{ url_for('download_converted_csv') }}" class="btn btn-success">
+                                            <i class="fas fa-download"></i> Download CSV
+                                        </a>
+                                    </div>
+                                    
+                                    <!-- Import Section -->
+                                    <div class="col-md-6">
+                                        <h6><i class="fas fa-upload text-primary"></i> Import Langsung ke Sistem</h6>
+                                        <p class="small text-muted">Import hasil konversi ke tahapan penanganan</p>
+                                        <div class="btn-group-vertical w-100">
+                                            <a href="{{ url_for('import_from_converted_csv', tahapan='pra_penuntutan') }}" 
+                                               class="btn btn-primary btn-sm">
+                                                <i class="fas fa-file-alt"></i> Import ke Pra Penuntutan
+                                            </a>
+                                            <a href="{{ url_for('import_from_converted_csv', tahapan='penuntutan') }}" 
+                                               class="btn btn-warning btn-sm mt-1">
+                                                <i class="fas fa-gavel"></i> Import ke Penuntutan
+                                            </a>
+                                            <a href="{{ url_for('import_from_converted_csv', tahapan='upaya_hukum') }}" 
+                                               class="btn btn-success btn-sm mt-1">
+                                                <i class="fas fa-balance-scale"></i> Import ke Upaya Hukum
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation -->
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{{ url_for('convert_pdf_to_csv') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Konversi PDF Lain
+                    </a>
+                    <div>
+                        <a href="{{ url_for('input_pidum') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-upload"></i> Pilihan Import
+                        </a>
+                        <a href="{{ url_for('view_pidum') }}" class="btn btn-outline-info">
+                            <i class="fas fa-eye"></i> Lihat Data PIDUM
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Quality Info -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <h5><i class="fas fa-info-circle"></i> Informasi Kualitas Data</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for table in tables %}
+                    <div class="col-md-{{ 12 // tables|length if tables|length <= 3 else 4 }}">
+                        <h6>Tabel {{ loop.index }}</h6>
+                        <ul class="list-unstyled small">
+                            <li>📊 <strong>Dimensi:</strong> {{ table.shape[0] }} baris × {{ table.shape[1] }} kolom</li>
+                            <li>📝 <strong>Kolom:</strong> {{ table.columns|list|join(', ') }}</li>
+                            <li>🔍 <strong>Data kosong:</strong> {{ table.isnull().sum().sum() }} sel</li>
+                            <li>✅ <strong>Status:</strong> 
+                                {% if 'NO' in table.columns and 'TANGGAL' in table.columns %}
+                                    <span class="text-success">Siap import</span>
+                                {% else %}
+                                    <span class="text-warning">Perlu review</span>
+                                {% endif %}
+                            </li>
+                        </ul>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="alert alert-warning mt-3">
+                    <h6><i class="fas fa-exclamation-triangle"></i> Catatan Penting:</h6>
+                    <ul class="mb-0 small">
+                        <li>Periksa data yang telah dikonversi sebelum melakukan import</li>
+                        <li>Pastikan format tanggal sudah sesuai (YYYY-MM-DD)</li>
+                        <li>Verifikasi jenis perkara dan data numerik</li>
+                        <li>Data kosong akan diisi otomatis saat import</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

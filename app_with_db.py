@@ -692,6 +692,14 @@ def confirm_import_pidum():
     
     return redirect(url_for('view_pidum'))
 
+# Register PDF conversion routes
+try:
+    from pdf_routes import register_pdf_routes
+    register_pdf_routes(app)
+    print("PDF conversion routes registered successfully")
+except ImportError as e:
+    print(f"Warning: Could not register PDF routes: {e}")
+
 if __name__ == '__main__':
     print(f"Database initialized at: {get_database_stats()['database_path']}")
     app.run(debug=True, port=5001)
