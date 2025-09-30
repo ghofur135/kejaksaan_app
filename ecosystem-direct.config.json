@@ -1,0 +1,27 @@
+{
+  "apps": [
+    {
+      "name": "kejaksaan-flask-app",
+      "script": "gunicorn",
+      "args": "--bind 0.0.0.0:5001 --workers 4 app_with_db:app",
+      "cwd": "/home/dhimas/project/kejaksaan",
+      "interpreter": "python3",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "watch": false,
+      "max_memory_restart": "1G",
+      "env": {
+        "NODE_ENV": "production",
+        "FLASK_ENV": "production",
+        "PYTHONPATH": "/home/dhimas/project/kejaksaan"
+      },
+      "log_file": "./logs/kejaksaan-flask-app.log",
+      "out_file": "./logs/kejaksaan-flask-app-out.log",
+      "error_file": "./logs/kejaksaan-flask-app-error.log",
+      "log_date_format": "YYYY-MM-DD HH:mm:ss Z",
+      "merge_logs": true,
+      "time": true
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "apps": [
+    {
+      "name": "kejaksaan-app",
+      "script": "./run_production.sh",
+      "cwd": "/home/dhimas/project/kejaksaan",
+      "interpreter": "/bin/bash",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "watch": false,
+      "max_memory_restart": "1G",
+      "env": {
+        "NODE_ENV": "production",
+        "FLASK_ENV": "production"
+      },
+      "log_file": "./logs/kejaksaan-app.log",
+      "out_file": "./logs/kejaksaan-app-out.log",
+      "error_file": "./logs/kejaksaan-app-error.log",
+      "log_date_format": "YYYY-MM-DD HH:mm:ss Z",
+      "merge_logs": true,
+      "time": true
+    }
+  ]
+}
