@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Import Data PIDUM - Aplikasi Data PIDUM & PIDSUS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-file-import"></i> Import Data PIDUM dari File Excel/CSV</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle"></i> Panduan Import:</h6>
+                    <ul class="mb-0">
+                        <li>File yang didukung: Excel (.xlsx, .xls) dan CSV (.csv)</li>
+                        <li>Pastikan file memiliki kolom: NO, PERIODE, TANGGAL, JENIS PERKARA, PRA PENUTUTAN, PENUNTUTAN, UPAYA HUKUM</li>
+                        <li>Setelah upload, Anda dapat memilih jenis perkara yang sesuai untuk setiap data</li>
+                        <li>Data akan ditampilkan untuk preview sebelum disimpan ke database</li>
+                    </ul>
+                </div>
+                
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Pilih File Excel/CSV</label>
+                        <input type="file" class="form-control" id="file" name="file" 
+                               accept=".xlsx,.xls,.csv" required>
+                        <div class="form-text">
+                            Format yang didukung: .xlsx, .xls, .csv (Maksimal 10MB)
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('input_pidum') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Kembali ke Input Manual
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-upload"></i> Upload dan Preview
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Template Format Section -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-download"></i> Template Format File</h5>
+            </div>
+            <div class="card-body">
+                <p>Untuk memudahkan import, gunakan format kolom berikut:</p>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-dark" style="background-color: #e9ecef !important;">
+                            <tr style="color: #000000 !important;">
+                                <th style="color: #000000 !important;">NO</th>
+                                <th style="color: #000000 !important;">PERIODE</th>
+                                <th style="color: #000000 !important;">TANGGAL</th>
+                                <th style="color: #000000 !important;">JENIS PERKARA</th>
+                                <th style="color: #000000 !important;">PRA PENUTUTAN</th>
+                                <th style="color: #000000 !important;">PENUNTUTAN</th>
+                                <th style="color: #000000 !important;">UPAYA HUKUM</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>1</td>
+                                <td>2025-09-30</td>
+                                <td>NARKOBA</td>
+                                <td>5</td>
+                                <td>3</td>
+                                <td>2</td>
+                            </tr>
+                            <tr>
+                                <td>2</td>
+                                <td>1</td>
+                                <td>2025-09-30</td>
+                                <td>KESUSILAAN</td>
+                                <td>2</td>
+                                <td>1</td>
+                                <td>1</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="alert alert-warning mt-3">
+                    <h6><i class="fas fa-exclamation-triangle"></i> Catatan Jenis Perkara:</h6>
+                    <p class="mb-0">
+                        Jenis perkara dari file akan dianalisis dan Anda dapat memilih dari kategori yang tersedia:
+                        <strong>NARKOBA, PERKARA ANAK, KESUSILAAN, JUDI, KDRT, OHARDA, PERKARA LAINNYA</strong>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

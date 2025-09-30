@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session, jsonify
 import pandas as pd
 import os
 from datetime import datetime
@@ -15,9 +15,11 @@ from database import (
     get_pidum_data_for_export, get_pidsus_data_for_export,
     get_database_stats
 )
+from import_helper import process_import_file, get_jenis_perkara_suggestions, prepare_import_data
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB max file size
 
 # Initialize database on startup
 init_database()
@@ -318,6 +320,123 @@ def database_info():
     <p><strong>Total Records:</strong> {stats['pidum_count'] + stats['pidsus_count']}</p>
     <p><a href="/">Back to Home</a></p>
     """
+
+@app.route('/import_pidum', methods=['GET', 'POST'])
+def import_pidum():
+    """Route untuk import data PIDUM dari file Excel/CSV"""
+    if request.method == 'POST':
+        # Check if file is uploaded
+        if 'file' not in request.files:
+            flash('Tidak ada file yang dipilih', 'error')
+            return redirect(request.url)
+        
+        file = request.files['file']
+        if file.filename == '':
+            flash('Tidak ada file yang dipilih', 'error')
+            return redirect(request.url)
+        
+        if file:
+            # Process the uploaded file
+            result = process_import_file(file)
+            
+            if result['success']:
+                # Store import data in session for preview
+                session['import_data'] = result['data']
+                session['import_filename'] = file.filename
+                
+                # Add suggestions for jenis perkara
+                for i, row in enumerate(result['data']):
+                    original_jenis = row.get('JENIS_PERKARA_ORIGINAL', '')
+                    suggestion = get_jenis_perkara_suggestions(original_jenis)
+                    result['data'][i]['SUGGESTED_JENIS_PERKARA'] = suggestion
+                
+                return render_template('import_preview.html', 
+                                     import_data=result['data'],
+                                     filename=file.filename,
+                                     total_rows=result['total_rows'],
+                                     data_type='PIDUM')
+            else:
+                flash(f'Error memproses file: {result["error"]}', 'error')
+                return redirect(request.url)
+    
+    return render_template('import_pidum.html')
+
+@app.route('/confirm_import_pidum', methods=['POST'])
+def confirm_import_pidum():
+    """Confirm and process PIDUM import with selected jenis perkara"""
+    import_data = session.get('import_data', [])
+    
+    if not import_data:
+        flash('Tidak ada data import yang tersedia', 'error')
+        return redirect(url_for('import_pidum'))
+    
+    try:
+        # Get data from form
+        prepared_data = []
+        
+        for i, original_row in enumerate(import_data):
+            # Check if this row should be included (not removed)
+            jenis_perkara_key = f'jenis_perkara_{i}'
+            if jenis_perkara_key not in request.form:
+                continue  # Skip removed rows
+            
+            # Get form data for this row
+            periode = request.form.get(f'periode_{i}', '1')
+            tanggal = request.form.get(f'tanggal_{i}', datetime.now().strftime('%Y-%m-%d'))
+            jenis_perkara = request.form.get(jenis_perkara_key, 'PERKARA LAINNYA')
+            pra_penututan = request.form.get(f'pra_penututan_{i}', '0')
+            penuntutan = request.form.get(f'penuntutan_{i}', '0')
+            upaya_hukum = request.form.get(f'upaya_hukum_{i}', '0')
+            
+            # Prepare data for database insertion
+            prepared_row = {
+                'NO': str(original_row.get('NO', i + 1)),
+                'PERIODE': str(periode),
+                'TANGGAL': tanggal,
+                'JENIS PERKARA': jenis_perkara,
+                'PRA PENUTUTAN': str(pra_penututan),
+                'PENUNTUTAN': str(penuntutan),
+                'UPAYA HUKUM': str(upaya_hukum)
+            }
+            
+            prepared_data.append(prepared_row)
+        
+        # Insert data to database
+        success_count = 0
+        error_count = 0
+        error_details = []
+        
+        for data in prepared_data:
+            try:
+                insert_pidum_data(data)
+                success_count += 1
+            except Exception as e:
+                error_count += 1
+                error_details.append(f"Baris {data.get('NO', '?')}: {str(e)}")
+                print(f"Error inserting row {data.get('NO', '?')}: {e}")
+        
+        # Clear session data
+        session.pop('import_data', None)
+        session.pop('import_filename', None)
+        
+        # Show results
+        if success_count > 0:
+            flash(f'Berhasil import {success_count} data PIDUM', 'success')
+            if error_count > 0:
+                flash(f'{error_count} data gagal diimport', 'warning')
+                # Optionally show error details
+                for error in error_details[:5]:  # Show max 5 errors
+                    flash(error, 'warning')
+        else:
+            flash('Tidak ada data yang berhasil diimport', 'error')
+            if error_details:
+                for error in error_details[:3]:  # Show max 3 errors
+                    flash(error, 'error')
+            
+    except Exception as e:
+        flash(f'Error saat import data: {str(e)}', 'error')
+    
+    return redirect(url_for('view_pidum'))
 
 if __name__ == '__main__':
     print(f"Database initialized at: {get_database_stats()['database_path']}")

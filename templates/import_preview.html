@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}Preview Import Data {{ data_type }} - Aplikasi Data PIDUM & PIDSUS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-eye"></i> Preview Import Data {{ data_type }}</h4>
+                <small class="text-muted">File: {{ filename }} | Total: {{ total_rows }} baris</small>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle"></i> Preview Data Import:</h6>
+                    <p class="mb-0">
+                        Silakan pilih jenis perkara yang sesuai untuk setiap data sebelum menyimpan ke database.
+                        Sistem telah memberikan saran berdasarkan analisis data original.
+                    </p>
+                </div>
+                
+                <form method="POST" action="{{ url_for('confirm_import_pidum') }}">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark" style="background-color: #e9ecef !important;">
+                                <tr style="color: #000000 !important;">
+                                    <th style="width: 4%; color: #000000 !important;">No</th>
+                                    <th style="width: 6%; color: #000000 !important;">Periode</th>
+                                    <th style="width: 10%; color: #000000 !important;">Tanggal</th>
+                                    <th style="width: 15%; color: #000000 !important;">Nama Tersangka / Keterangan</th>
+                                    <th style="width: 10%; color: #000000 !important;">Instansi</th>
+                                    <th style="width: 15%; color: #000000 !important;">Data Original</th>
+                                    <th style="width: 18%; color: #000000 !important;">Pilih Jenis Perkara</th>
+                                    <th style="width: 8%; color: #000000 !important;">Pra Penututan</th>
+                                    <th style="width: 8%; color: #000000 !important;">Penuntutan</th>
+                                    <th style="width: 8%; color: #000000 !important;">Upaya Hukum</th>
+                                    <th style="width: 6%; color: #000000 !important;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in import_data %}
+                                <tr id="row_{{ loop.index0 }}">
+                                    <td>{{ row.get('NO', loop.index) }}</td>
+                                    <td>
+                                        <input type="text" class="form-control form-control-sm" 
+                                               name="periode_{{ loop.index0 }}" 
+                                               value="{{ row.get('PERIODE', '1') }}" style="width:60px;">
+                                    </td>
+                                    <td>
+                                        <input type="date" class="form-control form-control-sm" 
+                                               name="tanggal_{{ loop.index0 }}" 
+                                               value="{{ row.get('TANGGAL', '') }}" style="width:130px;">
+                                    </td>
+                                    <td>
+                                        <small class="text-primary d-block">
+                                            <strong>{{ row.get('NAMA_TERSANGKA', 'Tidak ada') }}</strong>
+                                        </small>
+                                        <small class="text-muted">{{ row.get('KETERANGAN', '')[:50] }}{{ '...' if row.get('KETERANGAN', '')|length > 50 else '' }}</small>
+                                    </td>
+                                    <td>
+                                        <small class="text-info">{{ row.get('INSTANSI', 'N/A') }}</small>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ row.get('JENIS_PERKARA_ORIGINAL', 'Tidak ada data original') }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <select class="form-select form-select-sm" 
+                                                name="jenis_perkara_{{ loop.index0 }}" required>
+                                            <option value="">Pilih Jenis Perkara</option>
+                                            {% set suggested = row.get('SUGGESTED_JENIS_PERKARA', 'PERKARA LAINNYA') %}
+                                            <option value="NARKOBA" {{ 'selected' if suggested == 'NARKOBA' else '' }}>NARKOBA</option>
+                                            <option value="PERKARA ANAK" {{ 'selected' if suggested == 'PERKARA ANAK' else '' }}>PERKARA ANAK</option>
+                                            <option value="KESUSILAAN" {{ 'selected' if suggested == 'KESUSILAAN' else '' }}>KESUSILAAN</option>
+                                            <option value="JUDI" {{ 'selected' if suggested == 'JUDI' else '' }}>JUDI</option>
+                                            <option value="KDRT" {{ 'selected' if suggested == 'KDRT' else '' }}>KDRT</option>
+                                            <option value="OHARDA" {{ 'selected' if suggested == 'OHARDA' else '' }}>OHARDA</option>
+                                            <option value="PERKARA LAINNYA" {{ 'selected' if suggested == 'PERKARA LAINNYA' else '' }}>PERKARA LAINNYA</option>
+                                        </select>
+                                        {% if row.get('SUGGESTED_JENIS_PERKARA') %}
+                                        <small class="text-success">
+                                            <i class="fas fa-lightbulb"></i> Saran: {{ row.get('SUGGESTED_JENIS_PERKARA') }}
+                                        </small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control form-control-sm" 
+                                               name="pra_penututan_{{ loop.index0 }}" 
+                                               value="{{ row.get('PRA_PENUTUTAN', 0) }}" min="0" style="width:60px;">
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control form-control-sm" 
+                                               name="penuntutan_{{ loop.index0 }}" 
+                                               value="{{ row.get('PENUNTUTAN', 0) }}" min="0" style="width:60px;">
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control form-control-sm" 
+                                               name="upaya_hukum_{{ loop.index0 }}" 
+                                               value="{{ row.get('UPAYA_HUKUM', 0) }}" min="0" style="width:60px;">
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-danger btn-sm" 
+                                                onclick="removeRow({{ loop.index0 }})"
+                                                title="Hapus baris ini">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <div>
+                            <a href="{{ url_for('import_pidum') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Kembali
+                            </a>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-warning me-2" onclick="selectAllSuggestions()">
+                                <i class="fas fa-magic"></i> Gunakan Semua Saran
+                            </button>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> Simpan ke Database ({{ total_rows }} data)
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function removeRow(index) {
+    if (confirm('Apakah Anda yakin ingin menghapus baris ini?')) {
+        document.getElementById('row_' + index).style.display = 'none';
+        // Disable the select input so it won't be submitted
+        document.querySelector('select[name="jenis_perkara_' + index + '"]').disabled = true;
+    }
+}
+
+function selectAllSuggestions() {
+    const selects = document.querySelectorAll('select[name^="jenis_perkara_"]');
+    selects.forEach(select => {
+        const row = select.closest('tr');
+        if (row.style.display !== 'none') {
+            // Find the option with "selected" attribute (the suggestion)
+            const suggestedOption = select.querySelector('option[selected]');
+            if (suggestedOption) {
+                select.value = suggestedOption.value;
+            }
+        }
+    });
+    
+    // Show notification
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-success alert-dismissible fade show';
+    alert.innerHTML = `
+        <i class="fas fa-check-circle"></i> Semua saran jenis perkara telah dipilih!
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.querySelector('.card-body').insertBefore(alert, document.querySelector('form'));
+    
+    // Auto dismiss after 3 seconds
+    setTimeout(() => {
+        alert.remove();
+    }, 3000);
+}
+
+// Validate form before submit
+document.querySelector('form').addEventListener('submit', function(e) {
+    const selects = document.querySelectorAll('select[name^="jenis_perkara_"]:not([disabled])');
+    let hasEmpty = false;
+    
+    selects.forEach(select => {
+        if (!select.value) {
+            select.classList.add('is-invalid');
+            hasEmpty = true;
+        } else {
+            select.classList.remove('is-invalid');
+        }
+    });
+    
+    if (hasEmpty) {
+        e.preventDefault();
+        alert('Harap pilih jenis perkara untuk semua data yang akan diimport!');
+        return false;
+    }
+});
+</script>
+{% endblock %}
