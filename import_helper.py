@@ -50,11 +50,11 @@ def process_import_file(file, tahapan_penanganan=None):
                     std_row['NO'] = clean_value
                 elif 'PERIODE' in clean_key:
                     std_row['PERIODE'] = clean_value
-                elif any(keyword in clean_key for keyword in ['TANGGAL', 'DATE', 'TGL']):
+                elif any(keyword in clean_key for keyword in ['TANGGAL', 'DATE', 'TGL']) or 'TANGGAL REGISTER' in clean_key:
                     std_row['TANGGAL'] = clean_value
                 elif any(keyword in clean_key for keyword in ['JENIS', 'KATEGORI', 'TYPE']):
                     std_row['JENIS_PERKARA_ORIGINAL'] = clean_value
-                elif any(keyword in clean_key for keyword in ['KETERANGAN', 'DESCRIPTION', 'PASAL', 'NOTE', 'PELANGGARAN']):
+                elif any(keyword in clean_key for keyword in ['KETERANGAN', 'DESCRIPTION', 'PASAL', 'NOTE', 'PELANGGARAN']) or 'TINDAK PIDANA' in clean_key or 'DAKWAAN' in clean_key:
                     std_row['KETERANGAN'] = clean_value
             
             # If no explicit NO, use row index + 1
