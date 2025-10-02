@@ -22,6 +22,12 @@ from import_pra_penuntutan_helper import (
     prepare_pra_penuntutan_data_for_db,
     allowed_file_pra_penuntutan
 )
+from import_upaya_hukum_helper import (
+    process_upaya_hukum_import_file,
+    get_jenis_perkara_suggestions_upaya_hukum,
+    prepare_upaya_hukum_data_for_db,
+    allowed_file_upaya_hukum
+)
 
 def generate_pidum_chart(report_data):
     """Generate chart data for PIDUM report"""
@@ -540,6 +546,96 @@ def confirm_import_pra_penuntutan():
     
     return redirect(url_for('view_pidum'))
 
+@app.route('/import_upaya_hukum_api', methods=['GET', 'POST'])
+def import_upaya_hukum_api():
+    """API khusus untuk import data upaya hukum dengan format CSV khusus"""
+    if request.method == 'POST':
+        # Check if file is uploaded
+        if 'file' not in request.files:
+            flash('Tidak ada file yang dipilih', 'error')
+            return redirect(url_for('import_tahapan', tahapan='upaya_hukum'))
+        
+        file = request.files['file']
+        if file.filename == '':
+            flash('Tidak ada file yang dipilih', 'error')
+            return redirect(url_for('import_tahapan', tahapan='upaya_hukum'))
+        
+        if file and allowed_file_upaya_hukum(file.filename):
+            # Process the uploaded file with upaya hukum specific handler
+            result = process_upaya_hukum_import_file(file)
+            
+            if result['success']:
+                # Store import data in session for preview
+                session['import_data_upaya_hukum'] = result['data']
+                session['import_filename_upaya_hukum'] = file.filename
+                session['import_format_type'] = 'upaya_hukum'
+                
+                return render_template('import_upaya_hukum_preview.html', 
+                                     import_data=result['data'],
+                                     filename=file.filename,
+                                     total_rows=result['total_rows'],
+                                     tahapan_penanganan='UPAYA HUKUM')
+            else:
+                flash(f'Error memproses file: {result["error"]}', 'error')
+                return redirect(url_for('import_tahapan', tahapan='upaya_hukum'))
+        else:
+            flash('Format file tidak didukung. Gunakan CSV, XLS, atau XLSX.', 'error')
+            return redirect(url_for('import_tahapan', tahapan='upaya_hukum'))
+    
+    # GET request - show upload form
+    return render_template('import_upaya_hukum.html')
+
+@app.route('/confirm_import_upaya_hukum', methods=['POST'])
+def confirm_import_upaya_hukum():
+    """Confirm and process upaya hukum import"""
+    import_data = session.get('import_data_upaya_hukum', [])
+    
+    if not import_data:
+        flash('Tidak ada data import yang tersedia', 'error')
+        return redirect(url_for('import_tahapan', tahapan='upaya_hukum'))
+    
+    try:
+        # Prepare data from form
+        prepared_data = prepare_upaya_hukum_data_for_db(import_data, request.form)
+        
+        # Insert data to database
+        success_count = 0
+        error_count = 0
+        error_details = []
+        
+        for data in prepared_data:
+            try:
+                insert_pidum_data(data)
+                success_count += 1
+            except Exception as e:
+                error_count += 1
+                error_details.append(f"Baris {data.get('NO', '?')}: {str(e)}")
+                print(f"Error inserting row {data.get('NO', '?')}: {e}")
+        
+        # Clear session data
+        session.pop('import_data_upaya_hukum', None)
+        session.pop('import_filename_upaya_hukum', None)
+        session.pop('import_format_type', None)
+        
+        # Show results
+        if success_count > 0:
+            flash(f'Berhasil import {success_count} data UPAYA HUKUM', 'success')
+            if error_count > 0:
+                flash(f'{error_count} data gagal diimport', 'warning')
+                # Show some error details
+                for error in error_details[:3]:
+                    flash(error, 'warning')
+        else:
+            flash('Tidak ada data yang berhasil diimport', 'error')
+            if error_details:
+                for error in error_details[:3]:
+                    flash(error, 'error')
+            
+    except Exception as e:
+        flash(f'Error saat import data: {str(e)}', 'error')
+    
+    return redirect(url_for('view_pidum'))
+
 @app.route('/import_tahapan/<tahapan>', methods=['GET', 'POST'])
 def import_tahapan(tahapan):
     """Route untuk import data berdasarkan tahapan penanganan perkara"""
@@ -547,10 +643,13 @@ def import_tahapan(tahapan):
     if tahapan == 'pra_penuntutan':
         return redirect(url_for('import_pra_penuntutan_api'))
     
+    # Redirect upaya_hukum ke API khusus
+    if tahapan == 'upaya_hukum':
+        return redirect(url_for('import_upaya_hukum_api'))
+    
     # Map tahapan URL ke tahapan database
     tahapan_mapping = {
-        'penuntutan': 'PENUNTUTAN', 
-        'upaya_hukum': 'UPAYA HUKUM'
+        'penuntutan': 'PENUNTUTAN'
     }
     
     if tahapan not in tahapan_mapping:

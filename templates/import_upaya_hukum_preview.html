@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Preview Import Upaya Hukum - Aplikasi Data PIDUM & PIDSUS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-eye"></i> Preview Import Data Upaya Hukum</h4>
+                <small class="text-muted">File: {{ filename }} | Total Data: {{ total_rows }} baris</small>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-success">
+                    <h6><i class="fas fa-check-circle"></i> File berhasil diproses!</h6>
+                    <p class="mb-0">
+                        Silakan review data di bawah ini dan sesuaikan jenis perkara untuk setiap baris jika diperlukan.
+                        Data akan disimpan sebagai tahapan <strong>{{ tahapan_penanganan }}</strong>.
+                    </p>
+                </div>
+
+                <form method="POST" action="{{ url_for('confirm_import_upaya_hukum') }}">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="5%">No</th>
+                                    <th width="10%">Periode</th>
+                                    <th width="15%">Tanggal</th>
+                                    <th width="20%">Jenis Perkara</th>
+                                    <th width="35%">Keterangan</th>
+                                    <th width="10%">Aksi</th>
+                                    <th width="5%">
+                                        <input type="checkbox" id="select-all" class="form-check-input">
+                                        <label for="select-all" class="form-check-label">All</label>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in import_data %}
+                                <tr id="row-{{ loop.index0 }}" class="{% if loop.index0 % 2 == 0 %}table-row-even{% else %}table-row-odd{% endif %}">
+                                    <td>
+                                        <input type="text" name="no_{{ loop.index0 }}" value="{{ row.NO }}" class="form-control form-control-sm" readonly>
+                                    </td>
+                                    <td>
+                                        <input type="text" name="periode_{{ loop.index0 }}" value="{{ row.PERIODE }}" class="form-control form-control-sm">
+                                    </td>
+                                    <td>
+                                        <input type="date" name="tanggal_{{ loop.index0 }}" value="{{ row.TANGGAL }}" class="form-control form-control-sm">
+                                    </td>
+                                    <td>
+                                        <select name="jenis_perkara_{{ loop.index0 }}" class="form-select form-select-sm">
+                                            <option value="NARKOTIKA" {% if row.SUGGESTED_JENIS_PERKARA == 'NARKOTIKA' %}selected{% endif %}>NARKOTIKA</option>
+                                            <option value="KORUPSI" {% if row.SUGGESTED_JENIS_PERKARA == 'KORUPSI' %}selected{% endif %}>KORUPSI</option>
+                                            <option value="PENCURIAN" {% if row.SUGGESTED_JENIS_PERKARA == 'PENCURIAN' %}selected{% endif %}>PENCURIAN</option>
+                                            <option value="PENIPUAN" {% if row.SUGGESTED_JENIS_PERKARA == 'PENIPUAN' %}selected{% endif %}>PENIPUAN</option>
+                                            <option value="PENGANIAYAAN" {% if row.SUGGESTED_JENIS_PERKARA == 'PENGANIAYAAN' %}selected{% endif %}>PENGANIAYAAN</option>
+                                            <option value="PEMBUNUHAN" {% if row.SUGGESTED_JENIS_PERKARA == 'PEMBUNUHAN' %}selected{% endif %}>PEMBUNUHAN</option>
+                                            <option value="PERKOSAAN" {% if row.SUGGESTED_JENIS_PERKARA == 'PERKOSAAN' %}selected{% endif %}>PERKOSAAN</option>
+                                            <option value="PENGELAPAN" {% if row.SUGGESTED_JENIS_PERKARA == 'PENGELAPAN' %}selected{% endif %}>PENGELAPAN</option>
+                                            <option value="PERKARA LAINNYA" {% if row.SUGGESTED_JENIS_PERKARA == 'PERKARA LAINNYA' %}selected{% endif %}>PERKARA LAINNYA</option>
+                                        </select>
+                                        <small class="text-muted">
+                                            Terdakwa: {{ row.TERDAKWA_ORIGINAL[:50] }}{% if row.TERDAKWA_ORIGINAL|length > 50 %}...{% endif %}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <textarea name="keterangan_{{ loop.index0 }}" class="form-control form-control-sm" rows="2">{{ row.KETERANGAN }}</textarea>
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-danger btn-sm remove-row" data-row="{{ loop.index0 }}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <input type="checkbox" name="include_{{ loop.index0 }}" class="form-check-input row-checkbox" checked>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-info-circle"></i> Informasi:</h6>
+                                <ul class="mb-0">
+                                    <li><strong>Data Original:</strong> 
+                                        {% if import_data %}
+                                        - Terdakwa: {{ import_data[0].TERDAKWA_ORIGINAL if import_data[0].TERDAKWA_ORIGINAL else 'N/A' }}
+                                        - RP9: {{ import_data[0].RP9_ORIGINAL if import_data[0].RP9_ORIGINAL else 'N/A' }}
+                                        {% else %}
+                                        - Tidak ada data
+                                        {% endif %}
+                                    </li>
+                                    <li><strong>Jenis Perkara:</strong> Sistem memberikan saran berdasarkan analisis nama terdakwa</li>
+                                    <li><strong>Tahapan:</strong> Semua data akan disimpan sebagai {{ tahapan_penanganan }}</li>
+                                    <li><strong>Hapus Baris:</strong> Klik tombol merah untuk menghapus baris yang tidak diperlukan</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('import_upaya_hukum_api') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Kembali ke Upload
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-check"></i> Konfirmasi Import
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Select All functionality
+document.getElementById('select-all').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.row-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+    });
+});
+
+// Remove row functionality
+document.querySelectorAll('.remove-row').forEach(button => {
+    button.addEventListener('click', function() {
+        const rowIndex = this.getAttribute('data-row');
+        const row = document.getElementById('row-' + rowIndex);
+        if (confirm('Apakah Anda yakin ingin menghapus baris ini?')) {
+            row.style.display = 'none';
+            // Uncheck the checkbox to exclude from submission
+            const checkbox = row.querySelector('.row-checkbox');
+            if (checkbox) {
+                checkbox.checked = false;
+            }
+        }
+    });
+});
+
+// Row checkbox management
+document.querySelectorAll('.row-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        if (!this.checked) {
+            document.getElementById('select-all').checked = false;
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -8,23 +8,25 @@
         <div class="card">
             <div class="card-header">
                 <h4><i class="fas fa-file-import"></i> Import Data Tahapan Upaya Hukum</h4>
+                <small class="text-muted">Format Khusus: RP9 Data</small>
             </div>
             <div class="card-body">
                 <div class="alert alert-info">
-                    <h6><i class="fas fa-info-circle"></i> Panduan Import Tahapan Upaya Hukum:</h6>
+                    <h6><i class="fas fa-info-circle"></i> Panduan Import Data Upaya Hukum (Format RP9):</h6>
                     <ul class="mb-0">
                         <li>File yang didukung: Excel (.xlsx, .xls) dan CSV (.csv)</li>
-                        <li>Kolom yang diperlukan: <strong>NO, PERIODE, TANGGAL, JENIS PERKARA, KETERANGAN</strong></li>
-                        <li>KETERANGAN berisi informasi pasal pelanggaran atau detail lainnya</li>
+                        <li>Kolom yang diperlukan: <strong>No, Terdakwa_Terpidana, No_Tanggal_RP9</strong></li>
+                        <li><strong>No</strong> berisi nomor urut data</li>
+                        <li><strong>Terdakwa_Terpidana</strong> berisi nama terdakwa/terpidana</li>
+                        <li><strong>No_Tanggal_RP9</strong> berisi nomor dan tanggal RP9 (contoh: "PDM- 08/PRBAL/Eoh.2/06/2025")</li>
                         <li>Data akan disimpan sebagai tahapan <strong>Upaya Hukum</strong></li>
-                        <li>Setelah upload, Anda dapat memilih jenis perkara yang sesuai untuk setiap data</li>
+                        <li>Sistem akan otomatis menganalisis jenis perkara berdasarkan informasi terdakwa</li>
                     </ul>
                 </div>
                 
-                <form method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="tahapan" value="UPAYA HUKUM">
+                <form method="POST" action="{{ url_for('import_upaya_hukum_api') }}" enctype="multipart/form-data">
                     <div class="mb-3">
-                        <label for="file" class="form-label">Pilih File Excel/CSV</label>
+                        <label for="file" class="form-label">Pilih File Excel/CSV (Format RP9)</label>
                         <input type="file" class="form-control" id="file" name="file" 
                                accept=".xlsx,.xls,.csv" required>
                         <div class="form-text">
