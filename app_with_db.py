@@ -16,6 +16,12 @@ from database import (
     get_database_stats, get_pidum_report_data
 )
 from import_helper import process_import_file, get_jenis_perkara_suggestions, prepare_import_data
+from import_pra_penuntutan_helper import (
+    process_pra_penuntutan_import_file, 
+    get_jenis_perkara_suggestions_pra_penuntutan,
+    prepare_pra_penuntutan_data_for_db,
+    allowed_file_pra_penuntutan
+)
 
 def generate_pidum_chart(report_data):
     """Generate chart data for PIDUM report"""
@@ -444,12 +450,105 @@ def database_info():
     <p><a href="/">Back to Home</a></p>
     """
 
+@app.route('/import_pra_penuntutan_api', methods=['GET', 'POST'])
+def import_pra_penuntutan_api():
+    """API khusus untuk import data pra penuntutan dengan format CSV khusus"""
+    if request.method == 'POST':
+        # Check if file is uploaded
+        if 'file' not in request.files:
+            flash('Tidak ada file yang dipilih', 'error')
+            return redirect(url_for('import_tahapan', tahapan='pra_penuntutan'))
+        
+        file = request.files['file']
+        if file.filename == '':
+            flash('Tidak ada file yang dipilih', 'error')
+            return redirect(url_for('import_tahapan', tahapan='pra_penuntutan'))
+        
+        if file and allowed_file_pra_penuntutan(file.filename):
+            # Process the uploaded file with pra penuntutan specific handler
+            result = process_pra_penuntutan_import_file(file)
+            
+            if result['success']:
+                # Store import data in session for preview
+                session['import_data_pra_penuntutan'] = result['data']
+                session['import_filename_pra_penuntutan'] = file.filename
+                session['import_format_type'] = 'pra_penuntutan'
+                
+                return render_template('import_pra_penuntutan_preview.html', 
+                                     import_data=result['data'],
+                                     filename=file.filename,
+                                     total_rows=result['total_rows'],
+                                     tahapan_penanganan='PRA PENUNTUTAN')
+            else:
+                flash(f'Error memproses file: {result["error"]}', 'error')
+                return redirect(url_for('import_tahapan', tahapan='pra_penuntutan'))
+        else:
+            flash('Format file tidak didukung. Gunakan CSV, XLS, atau XLSX.', 'error')
+            return redirect(url_for('import_tahapan', tahapan='pra_penuntutan'))
+    
+    # GET request - show upload form
+    return render_template('import_pra_penuntutan.html')
+
+@app.route('/confirm_import_pra_penuntutan', methods=['POST'])
+def confirm_import_pra_penuntutan():
+    """Confirm and process pra penuntutan import"""
+    import_data = session.get('import_data_pra_penuntutan', [])
+    
+    if not import_data:
+        flash('Tidak ada data import yang tersedia', 'error')
+        return redirect(url_for('import_tahapan', tahapan='pra_penuntutan'))
+    
+    try:
+        # Prepare data from form
+        prepared_data = prepare_pra_penuntutan_data_for_db(import_data, request.form)
+        
+        # Insert data to database
+        success_count = 0
+        error_count = 0
+        error_details = []
+        
+        for data in prepared_data:
+            try:
+                insert_pidum_data(data)
+                success_count += 1
+            except Exception as e:
+                error_count += 1
+                error_details.append(f"Baris {data.get('NO', '?')}: {str(e)}")
+                print(f"Error inserting row {data.get('NO', '?')}: {e}")
+        
+        # Clear session data
+        session.pop('import_data_pra_penuntutan', None)
+        session.pop('import_filename_pra_penuntutan', None)
+        session.pop('import_format_type', None)
+        
+        # Show results
+        if success_count > 0:
+            flash(f'Berhasil import {success_count} data PRA PENUNTUTAN', 'success')
+            if error_count > 0:
+                flash(f'{error_count} data gagal diimport', 'warning')
+                # Show some error details
+                for error in error_details[:3]:
+                    flash(error, 'warning')
+        else:
+            flash('Tidak ada data yang berhasil diimport', 'error')
+            if error_details:
+                for error in error_details[:3]:
+                    flash(error, 'error')
+            
+    except Exception as e:
+        flash(f'Error saat import data: {str(e)}', 'error')
+    
+    return redirect(url_for('view_pidum'))
+
 @app.route('/import_tahapan/<tahapan>', methods=['GET', 'POST'])
 def import_tahapan(tahapan):
     """Route untuk import data berdasarkan tahapan penanganan perkara"""
+    # Redirect pra_penuntutan ke API khusus
+    if tahapan == 'pra_penuntutan':
+        return redirect(url_for('import_pra_penuntutan_api'))
+    
     # Map tahapan URL ke tahapan database
     tahapan_mapping = {
-        'pra_penuntutan': 'PRA PENUNTUTAN',
         'penuntutan': 'PENUNTUTAN', 
         'upaya_hukum': 'UPAYA HUKUM'
     }

@@ -8,23 +8,24 @@
         <div class="card">
             <div class="card-header">
                 <h4><i class="fas fa-file-import"></i> Import Data Tahapan Pra Penuntutan</h4>
+                <small class="text-muted">Format Khusus: SPDP Data</small>
             </div>
             <div class="card-body">
                 <div class="alert alert-info">
-                    <h6><i class="fas fa-info-circle"></i> Panduan Import Tahapan Pra Penuntutan:</h6>
+                    <h6><i class="fas fa-info-circle"></i> Panduan Import Data Pra Penuntutan (Format SPDP):</h6>
                     <ul class="mb-0">
                         <li>File yang didukung: Excel (.xlsx, .xls) dan CSV (.csv)</li>
-                        <li>Kolom yang diperlukan: <strong>NO, PERIODE, TANGGAL, JENIS PERKARA, KETERANGAN</strong></li>
-                        <li>KETERANGAN berisi informasi pasal pelanggaran atau detail lainnya</li>
+                        <li>Kolom yang diperlukan: <strong>No, Tgl_Nomor, Pasal_yang_Disangkakan</strong></li>
+                        <li><strong>Tgl_Nomor</strong> berisi tanggal dan nomor SPDP (contoh: "2025-08-28 SPDP/63/VIII/RES.1.24/2025/Reskrim")</li>
+                        <li><strong>Pasal_yang_Disangkakan</strong> berisi informasi pasal dan UU yang dilanggar</li>
                         <li>Data akan disimpan sebagai tahapan <strong>Pra Penuntutan</strong></li>
-                        <li>Setelah upload, Anda dapat memilih jenis perkara yang sesuai untuk setiap data</li>
+                        <li>Sistem akan otomatis menganalisis jenis perkara berdasarkan pasal</li>
                     </ul>
                 </div>
                 
-                <form method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="tahapan" value="PRA PENUNTUTAN">
+                <form method="POST" action="{{ url_for('import_pra_penuntutan_api') }}" enctype="multipart/form-data">
                     <div class="mb-3">
-                        <label for="file" class="form-label">Pilih File Excel/CSV</label>
+                        <label for="file" class="form-label">Pilih File Excel/CSV (Format SPDP)</label>
                         <input type="file" class="form-control" id="file" name="file" 
                                accept=".xlsx,.xls,.csv" required>
                         <div class="form-text">
@@ -51,47 +52,87 @@
     <div class="col-md-12">
         <div class="card">
             <div class="card-header">
-                <h5><i class="fas fa-download"></i> Template Format File</h5>
+                <h5><i class="fas fa-download"></i> Template Format File SPDP</h5>
             </div>
             <div class="card-body">
-                <p>Untuk memudahkan import tahapan Pra Penuntutan, gunakan format kolom berikut:</p>
+                <p>Untuk memudahkan import data Pra Penuntutan, gunakan format kolom SPDP berikut:</p>
                 <div class="table-responsive">
                     <table class="table table-bordered table-sm">
                         <thead class="table-dark" style="background-color: #e9ecef !important;">
                             <tr style="color: #000000 !important;">
-                                <th style="color: #000000 !important;">NO</th>
-                                <th style="color: #000000 !important;">PERIODE</th>
-                                <th style="color: #000000 !important;">TANGGAL</th>
-                                <th style="color: #000000 !important;">JENIS PERKARA</th>
-                                <th style="color: #000000 !important;">KETERANGAN</th>
+                                <th style="color: #000000 !important;">No</th>
+                                <th style="color: #000000 !important;">Tgl_Nomor</th>
+                                <th style="color: #000000 !important;">Pasal_yang_Disangkakan</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
                                 <td>1</td>
-                                <td>1</td>
-                                <td>2025-09-30</td>
-                                <td>NARKOBA</td>
-                                <td>Pasal 112 UU No. 35 Tahun 2009</td>
+                                <td>2025-08-28 SPDP/63/VIII/RES.1.24/2025/Reskrim</td>
+                                <td>Pasal 82 Undang-Undang Nomor 17 Tahun 2016 tentang Perlindungan Anak</td>
                             </tr>
                             <tr>
                                 <td>2</td>
-                                <td>1</td>
-                                <td>2025-09-30</td>
-                                <td>KESUSILAAN</td>
-                                <td>Pasal 289 KUHP</td>
+                                <td>2025-09-02 B/SPDP/65/IX/RES.1.8/Reskrim</td>
+                                <td>Pasal 365 KUHP Jo Pasal 55 ayat (1) ke-1 KUHP</td>
+                            </tr>
+                            <tr>
+                                <td>3</td>
+                                <td>2025-09-08 SPDP/24/IX/RES.4.2/2025/Resnarkoba</td>
+                                <td>Pasal 114 ayat (1) UU RI Nomor 35 Tahun 2009 tentang Narkotika</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
                 
-                <div class="alert alert-warning mt-3">
-                    <h6><i class="fas fa-exclamation-triangle"></i> Catatan Jenis Perkara:</h6>
-                    <p class="mb-0">
-                        Jenis perkara dari file akan dianalisis dan Anda dapat memilih dari kategori yang tersedia:
-                        <strong>NARKOBA, PERKARA ANAK, KESUSILAAN, JUDI, KDRT, OHARDA, PERKARA LAINNYA</strong>
-                    </p>
+                <div class="alert alert-success mt-3">
+                    <h6><i class="fas fa-robot"></i> Fitur Otomatis:</h6>
+                    <ul class="mb-0">
+                        <li><strong>Ekstraksi Tanggal:</strong> Sistem akan mengambil tanggal dari kolom Tgl_Nomor</li>
+                        <li><strong>Analisis Jenis Perkara:</strong> Berdasarkan pasal yang disangkakan</li>
+                        <li><strong>Kategori Terdeteksi:</strong> NARKOBA, PERKARA ANAK, KESUSILAAN, OHARDA, KDRT, JUDI, PERKARA LAINNYA</li>
+                        <li><strong>Keterangan Lengkap:</strong> Kombinasi nomor SPDP dan pasal</li>
+                    </ul>
                 </div>
+                
+                <div class="alert alert-warning mt-3">
+                    <h6><i class="fas fa-exclamation-triangle"></i> Contoh Deteksi Otomatis:</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Pasal Narkoba:</strong></p>
+                            <small>"Pasal 114 ayat (1) UU RI Nomor 35 Tahun 2009" → <span class="badge bg-danger">NARKOBA</span></small>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Pasal Perlindungan Anak:</strong></p>
+                            <small>"Pasal 82 UU Nomor 17 Tahun 2016" → <span class="badge bg-info">PERKARA ANAK</span></small>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Pasal KUHP:</strong></p>
+                            <small>"Pasal 365 KUHP" → <span class="badge bg-warning">OHARDA</span></small>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Pasal Lainnya:</strong></p>
+                            <small>"Pasal 67 UU Nomor 27 Tahun 2022" → <span class="badge bg-secondary">PERKARA LAINNYA</span></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- API Information -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h6><i class="fas fa-code"></i> Informasi API</h6>
+            </div>
+            <div class="card-body">
+                <p><strong>Endpoint:</strong> <code>/import_pra_penuntutan_api</code></p>
+                <p><strong>Format Data:</strong> SPDP (Surat Perintah Dimulainya Penyidikan)</p>
+                <p><strong>Tahapan Target:</strong> PRA PENUNTUTAN</p>
+                <p class="mb-0"><strong>Status:</strong> <span class="badge bg-success">API Terpisah - Tidak Bentrok</span></p>
             </div>
         </div>
     </div>
