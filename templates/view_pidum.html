@@ -12,9 +12,6 @@
                     <a href="{{ url_for('export_pidum_excel') }}" class="btn btn-success btn-sm">
                         <i class="fas fa-file-excel"></i> Export Excel
                     </a>
-                    <a href="{{ url_for('pidum_charts') }}" class="btn btn-info btn-sm">
-                        <i class="fas fa-chart-bar"></i> Grafik
-                    </a>
                     <a href="{{ url_for('input_pidum') }}" class="btn btn-primary btn-sm">
                         <i class="fas fa-plus"></i> Tambah Data
                     </a>
@@ -84,6 +81,9 @@
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
                             </div>
                         </div>
                     </div>
@@ -159,5 +159,40 @@ $(document).ready(function() {
 </script>
 <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
 <link href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+<style>
+/* Custom DataTables pagination styling */
+.dataTables_paginate .pagination {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: flex-end;
+    margin-top: 10px;
+}
+.dataTables_paginate .paginate_button {
+    border-radius: 4px !important;
+    min-width: 32px;
+    padding: 4px 10px !important;
+    margin: 0 2px;
+    font-size: 14px;
+    border: none !important;
+    background: #f8f9fa !important;
+    color: #007bff !important;
+    transition: background 0.2s, color 0.2s;
+}
+.dataTables_paginate .paginate_button.current {
+    background: #007bff !important;
+    color: #fff !important;
+    font-weight: bold;
+}
+.dataTables_paginate .paginate_button.disabled {
+    background: #e9ecef !important;
+    color: #adb5bd !important;
+    cursor: not-allowed !important;
+}
+.dataTables_paginate .paginate_button:hover:not(.current):not(.disabled) {
+    background: #e2e6ea !important;
+    color: #0056b3 !important;
+}
+</style>
 {% endblock %}
 {% endblock %}
