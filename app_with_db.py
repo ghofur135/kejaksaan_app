@@ -13,7 +13,8 @@ from database import (
     init_database, insert_pidum_data, insert_pidsus_data,
     get_all_pidum_data, get_all_pidsus_data,
     get_pidum_data_for_export, get_pidsus_data_for_export,
-    get_database_stats, get_pidum_report_data
+    get_database_stats, get_pidum_report_data,
+    delete_all_pidum_data, delete_pidum_item
 )
 from import_helper import process_import_file, get_jenis_perkara_suggestions, prepare_import_data
 from import_pra_penuntutan_helper import (
@@ -194,13 +195,36 @@ def input_pidsus():
 
 @app.route('/view_pidum')
 def view_pidum():
-    data = get_pidum_data_for_export()
+    data = get_all_pidum_data()  # Changed to include ID for delete functionality
     return render_template('view_pidum.html', data=data)
 
 @app.route('/view_pidsus')
 def view_pidsus():
     data = get_pidsus_data_for_export()
     return render_template('view_pidsus.html', data=data)
+
+@app.route('/delete_all_pidum', methods=['POST'])
+def delete_all_pidum():
+    """Delete all PIDUM data"""
+    try:
+        deleted_count = delete_all_pidum_data()
+        flash(f'Berhasil menghapus {deleted_count} data PIDUM', 'success')
+    except Exception as e:
+        flash(f'Error menghapus data: {str(e)}', 'error')
+    return redirect(url_for('view_pidum'))
+
+@app.route('/delete_pidum_item/<int:item_id>', methods=['POST'])
+def delete_pidum_item_route(item_id):
+    """Delete single PIDUM item by ID"""
+    try:
+        success = delete_pidum_item(item_id)
+        if success:
+            flash('Data berhasil dihapus', 'success')
+        else:
+            flash('Data tidak ditemukan', 'error')
+    except Exception as e:
+        flash(f'Error menghapus data: {str(e)}', 'error')
+    return redirect(url_for('view_pidum'))
 
 @app.route('/laporan_pidum')
 def laporan_pidum():

@@ -133,6 +133,15 @@ def delete_all_pidum_data():
         cursor = conn.cursor()
         cursor.execute('DELETE FROM pidum_data')
         conn.commit()
+        return cursor.rowcount
+
+def delete_pidum_item(item_id):
+    """Delete single PIDUM item by ID"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM pidum_data WHERE id = ?', (item_id,))
+        conn.commit()
+        return cursor.rowcount > 0
 
 def delete_all_pidsus_data():
     """Delete all PIDSUS data (for testing)"""

@@ -18,6 +18,11 @@
                     <a href="{{ url_for('input_pidum') }}" class="btn btn-primary btn-sm">
                         <i class="fas fa-plus"></i> Tambah Data
                     </a>
+                    {% if data %}
+                    <button type="button" class="btn btn-danger btn-sm" onclick="confirmDeleteAll()">
+                        <i class="fas fa-trash"></i> Hapus Semua
+                    </button>
+                    {% endif %}
                 </div>
             </div>
             <div class="card-body">
@@ -34,16 +39,31 @@
                                     <th>PERIODE</th>
                                     <th>TANGGAL</th>
                                     <th>JENIS PERKARA</th>
+                                    <th>TAHAPAN</th>
+                                    <th>KETERANGAN</th>
+                                    <th width="100">AKSI</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for item in data %}
                                 <tr>
-                                    <td>{{ item.NO }}</td>
-                                    <td>{{ item.PERIODE }}</td>
-                                    <td>{{ item.TANGGAL }}</td>
+                                    <td>{{ item.no }}</td>
+                                    <td>{{ item.periode }}</td>
+                                    <td>{{ item.tanggal }}</td>
                                     <td>
-                                        <span class="badge bg-secondary">{{ item['JENIS PERKARA'] }}</span>
+                                        <span class="badge bg-secondary">{{ item.jenis_perkara }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ item.tahapan_penanganan or 'N/A' }}</span>
+                                    </td>
+                                    <td>
+                                        <small>{{ item.keterangan[:50] if item.keterangan else '-' }}{% if item.keterangan and item.keterangan|length > 50 %}...{% endif %}</small>
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-danger btn-sm" 
+                                                onclick="confirmDelete({{ item.id }}, '{{ item.no|e }}')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -82,24 +102,57 @@
     </div>
 </div>
 
+<!-- Hidden forms for delete operations -->
+<form id="deleteAllForm" method="POST" action="{{ url_for('delete_all_pidum') }}" style="display: none;">
+</form>
+
+<form id="deleteItemForm" method="POST" style="display: none;">
+</form>
+
 {% block scripts %}
 <script>
+// Function to confirm delete all
+function confirmDeleteAll() {
+    if (confirm('Apakah Anda yakin ingin menghapus SEMUA data PIDUM? Tindakan ini tidak dapat dibatalkan!')) {
+        document.getElementById('deleteAllForm').submit();
+    }
+}
+
+// Function to confirm delete single item
+function confirmDelete(itemId, itemNo) {
+    if (confirm('Apakah Anda yakin ingin menghapus data nomor ' + itemNo + '?')) {
+        var form = document.getElementById('deleteItemForm');
+        form.action = '/delete_pidum_item/' + itemId;
+        form.submit();
+    }
+}
+
 $(document).ready(function() {
     $('#pidumTable').DataTable({
         "pageLength": 10,
+        "dom": '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
+               '<"row"<"col-sm-12"tr>>' +
+               '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+        "pagingType": "full_numbers",
         "language": {
             "lengthMenu": "Tampilkan _MENU_ data per halaman",
             "zeroRecords": "Tidak ada data yang ditemukan",
-            "info": "Menampilkan halaman _PAGE_ dari _PAGES_",
+            "info": "Menampilkan halaman _PAGE_ dari _PAGES_ (_START_ sampai _END_ dari _TOTAL_ data)",
             "infoEmpty": "Tidak ada data yang tersedia",
             "infoFiltered": "(difilter dari _MAX_ total data)",
             "search": "Cari:",
             "paginate": {
-                "first": "Pertama",
-                "last": "Terakhir",
-                "next": "Selanjutnya",
-                "previous": "Sebelumnya"
+                "first": "« Pertama",
+                "last": "Terakhir »",
+                "next": "Selanjutnya ›",
+                "previous": "‹ Sebelumnya"
             }
+        },
+        "drawCallback": function(settings) {
+            // Apply Bootstrap button styling to pagination
+            $('.dataTables_paginate .paginate_button').addClass('btn btn-outline-primary btn-sm mx-1');
+            $('.dataTables_paginate .paginate_button.current').removeClass('btn-outline-primary').addClass('btn-primary');
+            $('.dataTables_paginate .paginate_button.disabled').removeClass('btn-outline-primary').addClass('btn-outline-secondary').attr('disabled', true);
         }
     });
 });
