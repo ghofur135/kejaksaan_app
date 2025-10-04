@@ -90,6 +90,9 @@
                                         {% if import_data %}
                                         - Terdakwa: {{ import_data[0].TERDAKWA_ORIGINAL if import_data[0].TERDAKWA_ORIGINAL else 'N/A' }}
                                         - RP9: {{ import_data[0].RP9_ORIGINAL if import_data[0].RP9_ORIGINAL else 'N/A' }}
+                                        {% if import_data[0].JENIS_UPAYA_HUKUM %}
+                                        - Jenis Upaya Hukum: {{ import_data[0].JENIS_UPAYA_HUKUM }}
+                                        {% endif %}
                                         {% else %}
                                         - Tidak ada data
                                         {% endif %}

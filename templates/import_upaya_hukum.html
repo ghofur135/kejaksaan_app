@@ -16,9 +16,12 @@
                     <ul class="mb-0">
                         <li>File yang didukung: Excel (.xlsx, .xls) dan CSV (.csv)</li>
                         <li>Kolom yang diperlukan: <strong>No, Terdakwa_Terpidana, No_Tanggal_RP9</strong></li>
+                        <li>Kolom opsional: <strong>Jenis_Upaya_Hukum, Tanggal_Transaksi, Banding_Akte, Kasasi_Akte, PK_Tanggal</strong></li>
                         <li><strong>No</strong> berisi nomor urut data</li>
                         <li><strong>Terdakwa_Terpidana</strong> berisi nama terdakwa/terpidana</li>
                         <li><strong>No_Tanggal_RP9</strong> berisi nomor dan tanggal RP9 (contoh: "PDM- 08/PRBAL/Eoh.2/06/2025")</li>
+                        <li><strong>Jenis_Upaya_Hukum</strong> berisi jenis upaya hukum (Banding, Kasasi, PK)</li>
+                        <li><strong>Tanggal_Transaksi</strong> berisi tanggal transaksi (contoh: "Terdakwa: 2025-09-08 0")</li>
                         <li>Data akan disimpan sebagai tahapan <strong>Upaya Hukum</strong></li>
                         <li>Sistem akan otomatis menganalisis jenis perkara berdasarkan informasi terdakwa</li>
                     </ul>
@@ -56,43 +59,68 @@
                 <h5><i class="fas fa-download"></i> Template Format File</h5>
             </div>
             <div class="card-body">
-                <p>Untuk memudahkan import tahapan Upaya Hukum, gunakan format kolom berikut:</p>
+                <p>Berikut contoh format file CSV yang diharapkan:</p>
                 <div class="table-responsive">
                     <table class="table table-bordered table-sm">
-                        <thead class="table-dark" style="background-color: #e9ecef !important;">
-                            <tr style="color: #000000 !important;">
-                                <th style="color: #000000 !important;">NO</th>
-                                <th style="color: #000000 !important;">PERIODE</th>
-                                <th style="color: #000000 !important;">TANGGAL</th>
-                                <th style="color: #000000 !important;">JENIS PERKARA</th>
-                                <th style="color: #000000 !important;">KETERANGAN</th>
+                        <thead class="table-light">
+                            <tr>
+                                <th>No</th>
+                                <th>Terdakwa_Terpidana</th>
+                                <th>No_Tanggal_RP9</th>
+                                <th>Jenis_Upaya_Hukum</th>
+                                <th>Tanggal_Transaksi</th>
+                                <th>Banding_Akte</th>
+                                <th>Kasasi_Akte</th>
+                                <th>PK_Tanggal</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
                                 <td>1</td>
-                                <td>1</td>
-                                <td>2025-09-30</td>
-                                <td>NARKOBA</td>
-                                <td>Pasal 112 UU No. 35 Tahun 2009</td>
+                                <td>FADELA TRI ANGGRAENI Alias DELA Binti PAIJO</td>
+                                <td>PDM- 08/PRBAL/Eoh.2/06/2025</td>
+                                <td>Banding</td>
+                                <td>Terdakwa: 2025-09-08 0</td>
+                                <td>Terdakwa: 2025-09-08 0</td>
+                                <td></td>
+                                <td></td>
                             </tr>
                             <tr>
                                 <td>2</td>
-                                <td>1</td>
-                                <td>2025-09-30</td>
-                                <td>KESUSILAAN</td>
-                                <td>Pasal 289 KUHP</td>
+                                <td>RENO ALI MUKHTAMAR Alias RENO Bin AHMAD SUBARNO</td>
+                                <td>PDM- 11/PRBAL/Eoh.2/07/2025</td>
+                                <td>Banding</td>
+                                <td>Terdakwa: 2025-09-22 0</td>
+                                <td>Terdakwa: 2025-09-22 0</td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>3</td>
+                                <td>ADITYA SETIAWAN bin WAHIDIN</td>
+                                <td>PDM- 19/PRBAL/Enz.2/06/2025</td>
+                                <td>Banding</td>
+                                <td>Jaksa: 2025-09-01 0</td>
+                                <td>Jaksa: 2025-09-01 0</td>
+                                <td></td>
+                                <td></td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
                 
                 <div class="alert alert-warning mt-3">
-                    <h6><i class="fas fa-exclamation-triangle"></i> Catatan Jenis Perkara:</h6>
-                    <p class="mb-0">
-                        Jenis perkara dari file akan dianalisis dan Anda dapat memilih dari kategori yang tersedia:
-                        <strong>NARKOBA, PERKARA ANAK, KESUSILAAN, JUDI, KDRT, OHARDA, PERKARA LAINNYA</strong>
-                    </p>
+                    <h6><i class="fas fa-exclamation-triangle"></i> Catatan Penting:</h6>
+                    <ul class="mb-0">
+                        <li>Kolom <strong>wajib</strong>: No, Terdakwa_Terpidana, No_Tanggal_RP9</li>
+                        <li>Kolom <strong>opsional</strong>: Jenis_Upaya_Hukum, Tanggal_Transaksi, Banding_Akte, Kasasi_Akte, PK_Tanggal</li>
+                        <li>Pastikan nama kolom <strong>tepat sama</strong> dengan template di atas</li>
+                        <li>Jangan ada baris kosong di tengah data</li>
+                        <li>Nama terdakwa harus diisi dengan lengkap</li>
+                        <li>Nomor RP9 harus mengikuti format standar dengan tanggal di akhir</li>
+                        <li>File CSV harus menggunakan encoding UTF-8</li>
+                        <li>Sistem akan menggunakan Tanggal_Transaksi jika tersedia, atau mengekstrak dari No_Tanggal_RP9</li>
+                    </ul>
                 </div>
             </div>
         </div>

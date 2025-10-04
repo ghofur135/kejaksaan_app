@@ -37,6 +37,30 @@ def extract_date_from_rp9(no_tanggal_rp9):
         print(f"Error extracting date from RP9: {e}")
         return datetime.now().strftime('%Y-%m-%d')
 
+def extract_date_from_transaksi(tanggal_transaksi):
+    """Extract date from Tanggal_Transaksi field (e.g., 'Terdakwa: 2025-09-08 0' or 'Jaksa: 2025- 09-01 0')"""
+    try:
+        # Pattern untuk mengekstrak tanggal dari format seperti "Terdakwa: 2025-09-08 0"
+        patterns = [
+            r'(\d{4})-(\d{1,2})-(\d{1,2})',  # YYYY-MM-DD atau YYYY-M-D
+            r'(\d{4})-\s*(\d{1,2})-(\d{1,2})',  # YYYY- MM-DD (dengan spasi)
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, str(tanggal_transaksi))
+            if match:
+                year = match.group(1)
+                month = match.group(2).zfill(2)
+                day = match.group(3).zfill(2)
+                return f"{year}-{month}-{day}"
+        
+        # Jika tidak ada pattern yang cocok, gunakan tanggal hari ini
+        return datetime.now().strftime('%Y-%m-%d')
+        
+    except Exception as e:
+        print(f"Error extracting date from transaksi: {e}")
+        return datetime.now().strftime('%Y-%m-%d')
+
 def get_jenis_perkara_suggestions_upaya_hukum(terdakwa_info):
     """Get jenis perkara suggestions based on terdakwa information"""
     if not terdakwa_info or terdakwa_info.strip() == '':
@@ -79,12 +103,18 @@ def process_upaya_hukum_import_file(file):
         else:
             raise ValueError("Format file tidak didukung. Gunakan CSV, XLS, atau XLSX.")
         
-        # Validate required columns
-        required_columns = ['No', 'Terdakwa_Terpidana', 'No_Tanggal_RP9']
-        missing_columns = [col for col in required_columns if col not in df.columns]
+        # Validate required columns - support both old and new format
+        required_columns_old = ['No', 'Terdakwa_Terpidana', 'No_Tanggal_RP9']
+        required_columns_new = ['No', 'Terdakwa_Terpidana', 'No_Tanggal_RP9', 'Jenis_Upaya_Hukum']
         
-        if missing_columns:
-            raise ValueError(f"Kolom yang diperlukan tidak ditemukan: {', '.join(missing_columns)}")
+        # Check if it's the new format (with additional columns)
+        is_new_format = all(col in df.columns for col in required_columns_new)
+        is_old_format = all(col in df.columns for col in required_columns_old)
+        
+        if not is_new_format and not is_old_format:
+            missing_old = [col for col in required_columns_old if col not in df.columns]
+            missing_new = [col for col in required_columns_new if col not in df.columns]
+            raise ValueError(f"Format tidak sesuai. Kolom minimal yang diperlukan: {', '.join(required_columns_old)} atau {', '.join(required_columns_new)}")
         
         # Convert DataFrame to standardized format
         standardized_data = []
@@ -101,12 +131,34 @@ def process_upaya_hukum_import_file(file):
             terdakwa_terpidana = str(row.get('Terdakwa_Terpidana', '')).strip()
             no_tanggal_rp9 = str(row.get('No_Tanggal_RP9', '')).strip()
             
+            # Extract additional data if available (new format)
+            jenis_upaya_hukum = str(row.get('Jenis_Upaya_Hukum', '')).strip()
+            tanggal_transaksi = str(row.get('Tanggal_Transaksi', '')).strip()
+            banding_akte = str(row.get('Banding_Akte', '')).strip()
+            kasasi_akte = str(row.get('Kasasi_Akte', '')).strip()
+            pk_tanggal = str(row.get('PK_Tanggal', '')).strip()
+            
             # Skip empty rows
             if not terdakwa_terpidana or terdakwa_terpidana.lower() in ['nan', 'none', '']:
                 continue
             
-            # Extract date from No_Tanggal_RP9
-            extracted_date = extract_date_from_rp9(no_tanggal_rp9)
+            # Extract date - prioritize Tanggal_Transaksi if available
+            extracted_date = extract_date_from_transaksi(tanggal_transaksi) if tanggal_transaksi and tanggal_transaksi != '' else extract_date_from_rp9(no_tanggal_rp9)
+            
+            # Build detailed keterangan
+            keterangan_parts = [f"Terdakwa: {terdakwa_terpidana}"]
+            if jenis_upaya_hukum:
+                keterangan_parts.append(f"Jenis: {jenis_upaya_hukum}")
+            if no_tanggal_rp9:
+                keterangan_parts.append(f"RP9: {no_tanggal_rp9}")
+            if banding_akte:
+                keterangan_parts.append(f"Banding: {banding_akte}")
+            if kasasi_akte:
+                keterangan_parts.append(f"Kasasi: {kasasi_akte}")
+            if pk_tanggal:
+                keterangan_parts.append(f"PK: {pk_tanggal}")
+            
+            keterangan = " | ".join(keterangan_parts)
             
             # Create standardized row
             std_row = {
@@ -115,10 +167,15 @@ def process_upaya_hukum_import_file(file):
                 'PERIODE': '1',  # Default periode
                 'TANGGAL': extracted_date,
                 'JENIS_PERKARA_ORIGINAL': terdakwa_terpidana,
-                'KETERANGAN': f"Terdakwa: {terdakwa_terpidana} | RP9: {no_tanggal_rp9}",
+                'KETERANGAN': keterangan,
                 'TAHAPAN_PENANGANAN': 'UPAYA HUKUM',
                 'TERDAKWA_ORIGINAL': terdakwa_terpidana,
-                'RP9_ORIGINAL': no_tanggal_rp9
+                'RP9_ORIGINAL': no_tanggal_rp9,
+                'JENIS_UPAYA_HUKUM': jenis_upaya_hukum,
+                'TANGGAL_TRANSAKSI_ORIGINAL': tanggal_transaksi,
+                'BANDING_AKTE': banding_akte,
+                'KASASI_AKTE': kasasi_akte,
+                'PK_TANGGAL': pk_tanggal
             }
             
             # Get suggested jenis perkara
