@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+
+{% block title %}Laporan PIDUM - Aplikasi Data PIDUM & PIDSUS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4><i class="fas fa-chart-line"></i> Laporan PIDUM (Pidana Umum)</h4>
+                <div>
+                    <a href="{{ url_for('export_pidum_excel') }}" class="btn btn-success btn-sm">
+                        <i class="fas fa-file-excel"></i> Export Excel
+                    </a>
+                    <button onclick="window.print()" class="btn btn-info btn-sm">
+                        <i class="fas fa-print"></i> Print
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Filter Section -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <form method="GET" class="row g-3">
+                            <div class="col-md-3">
+                                <label for="bulan" class="form-label">Bulan</label>
+                                <select name="bulan" id="bulan" class="form-select">
+                                    <option value="">Semua Bulan</option>
+                                    {% for i in range(1, 13) %}
+                                    <option value="{{ i }}" {% if bulan and bulan == i %}selected{% endif %}>
+                                        {{ ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+                                             'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][i] }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="tahun" class="form-label">Tahun</label>
+                                <select name="tahun" id="tahun" class="form-select">
+                                    {% for year in range(2023, 2027) %}
+                                    <option value="{{ year }}" {% if tahun and tahun == year %}selected{% endif %}>{{ year }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="periode" class="form-label">Periode</label>
+                                <select name="periode" id="periode" class="form-select">
+                                    <option value="">Semua Periode</option>
+                                    {% for periode_opt in periode_options %}
+                                    <option value="{{ periode_opt }}" {% if periode_filter and periode_filter == periode_opt %}selected{% endif %}>{{ periode_opt }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary me-2">
+                                    <i class="fas fa-filter"></i> Filter
+                                </button>
+                                <a href="{{ url_for('laporan_pidum_new') }}" class="btn btn-secondary">
+                                    <i class="fas fa-refresh"></i> Reset
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Summary Info -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle"></i> Informasi Laporan</h6>
+                            <p class="mb-0">
+                                <strong>Periode:</strong> 
+                                {% if bulan %}
+                                    {{ ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+                                         'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][bulan] }}
+                                {% else %}
+                                    Semua Bulan
+                                {% endif %}
+                                {{ tahun if tahun else '2025' }}
+                                | <strong>Total Kasus:</strong> {{ total_keseluruhan }} 
+                                | <strong>Data per:</strong> {{ current_date }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table Section -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <h5><i class="fas fa-table"></i> Tabel Laporan</h5>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="5%" style="color: black;">No</th>
+                                        <th width="15%" style="color: black;">Periode</th>
+                                        <th width="25%" style="color: black;">Jenis Perkara</th>
+                                        <th width="10%" style="color: black;">Total</th>
+                                        <th width="15%" style="color: black;">Pra Penuntutan</th>
+                                        <th width="15%" style="color: black;">Penuntutan</th>
+                                        <th width="15%" style="color: black;">Upaya Hukum</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in report_data %}
+                                    <tr>
+                                        <td class="text-center">{{ loop.index }}</td>
+                                        <td>
+                                            {% if item.PERIODE %}
+                                                <span class="badge bg-primary">{{ item.PERIODE }}</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Semua</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ item.JENIS_PERKARA }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <strong class="text-primary">{{ item.TOTAL }}</strong>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-success">{{ item.PRA_PENUNTUTAN }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-warning">{{ item.PENUNTUTAN }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-danger">{{ item.UPAYA_HUKUM }}</span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot class="table-secondary">
+                                    <tr>
+                                        <th colspan="3" class="text-center">TOTAL KESELURUHAN</th>
+                                        <th class="text-center">{{ total_keseluruhan }}</th>
+                                        <th class="text-center">{{ total_pra_penuntutan }}</th>
+                                        <th class="text-center">{{ total_penuntutan }}</th>
+                                        <th class="text-center">{{ total_upaya_hukum }}</th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chart Section -->
+                <div class="row mt-5">
+                    <div class="col-md-12">
+                        <h5><i class="fas fa-chart-bar"></i> Grafik</h5>
+                        
+                        <!-- Chart by Jenis Perkara -->
+                        <div class="row justify-content-center">
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6>Distribusi per Jenis Perkara</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <canvas id="jenisPerkaraChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistics Cards -->
+                <div class="row mt-4">
+                    <div class="col-md-3">
+                        <div class="card text-white bg-primary">
+                            <div class="card-body text-center">
+                                <h4>{{ total_keseluruhan }}</h4>
+                                <p>Total Kasus</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-white bg-success">
+                            <div class="card-body text-center">
+                                <h4>{{ total_pra_penuntutan }}</h4>
+                                <p>Pra Penuntutan</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-white bg-warning">
+                            <div class="card-body text-center">
+                                <h4>{{ total_penuntutan }}</h4>
+                                <p>Penuntutan</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-white bg-danger">
+                            <div class="card-body text-center">
+                                <h4>{{ total_upaya_hukum }}</h4>
+                                <p>Upaya Hukum</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Data for charts
+const reportData = {{ report_data | tojson }};
+
+// Prepare data for jenis perkara chart
+const jenisPerkaraData = {};
+reportData.forEach(item => {
+    if (jenisPerkaraData[item.JENIS_PERKARA]) {
+        jenisPerkaraData[item.JENIS_PERKARA] += item.TOTAL;
+    } else {
+        jenisPerkaraData[item.JENIS_PERKARA] = item.TOTAL;
+    }
+});
+
+const jenisPerkaraLabels = Object.keys(jenisPerkaraData);
+const jenisPerkaraValues = Object.values(jenisPerkaraData);
+
+// Colors for jenis perkara chart
+const colors = [
+    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', 
+    '#FF9F40', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4'
+];
+
+// Jenis Perkara Chart (Bar Chart)
+const jenisPerkaraCtx = document.getElementById('jenisPerkaraChart').getContext('2d');
+new Chart(jenisPerkaraCtx, {
+    type: 'bar',
+    data: {
+        labels: jenisPerkaraLabels,
+        datasets: [{
+            label: 'Jumlah Kasus',
+            data: jenisPerkaraValues,
+            backgroundColor: colors.slice(0, jenisPerkaraLabels.length),
+            borderColor: colors.slice(0, jenisPerkaraLabels.length),
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            },
+            x: {
+                ticks: {
+                    maxRotation: 45,
+                    minRotation: 0
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            },
+            title: {
+                display: true,
+                text: 'Histogram Distribusi Kasus per Jenis Perkara'
+            }
+        }
+    }
+});
+</script>
+
+<style>
+@media print {
+    .btn, .card-header .btn-group, .no-print {
+        display: none !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    .table {
+        font-size: 12px;
+    }
+    
+    .badge {
+        color: #000 !important;
+        background-color: #fff !important;
+        border: 1px solid #000 !important;
+    }
+}
+</style>
+{% endblock %}
+{% endblock %}

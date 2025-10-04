@@ -269,6 +269,114 @@ def laporan_pidum():
                          total_keseluruhan=total_keseluruhan,
                          chart_data=chart_data)
 
+@app.route('/laporan_pidum_new')
+def laporan_pidum_new():
+    # Get filter parameters
+    bulan = request.args.get('bulan', type=int)
+    tahun = request.args.get('tahun', type=int, default=2025)
+    periode_filter = request.args.get('periode')
+    
+    from datetime import datetime
+    import sqlite3
+    from collections import defaultdict
+    
+    # Get database connection
+    conn = sqlite3.connect('db/kejaksaan.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # Build query based on filters
+    where_conditions = []
+    params = []
+    
+    if bulan:
+        where_conditions.append("strftime('%m', tanggal) = ?")
+        params.append(f"{bulan:02d}")
+    
+    if tahun:
+        where_conditions.append("strftime('%Y', tanggal) = ?")
+        params.append(str(tahun))
+    
+    if periode_filter:
+        where_conditions.append("periode = ?")
+        params.append(periode_filter)
+    
+    where_clause = ""
+    if where_conditions:
+        where_clause = "WHERE " + " AND ".join(where_conditions)
+    
+    # Get data from pidum_data table
+    query = f"""
+    SELECT periode, jenis_perkara, tanggal, tahapan_penanganan
+    FROM pidum_data {where_clause}
+    ORDER BY periode, jenis_perkara
+    """
+    
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    
+    # Get unique periods for filter dropdown
+    cursor.execute("SELECT DISTINCT periode FROM pidum_data ORDER BY periode")
+    periode_options = [row[0] for row in cursor.fetchall() if row[0]]
+    
+    conn.close()
+    
+    # Process data for report
+    data_summary = defaultdict(lambda: {
+        'PERIODE': '',
+        'JENIS_PERKARA': '',
+        'TOTAL': 0,
+        'PRA_PENUNTUTAN': 0,
+        'PENUNTUTAN': 0,
+        'UPAYA_HUKUM': 0
+    })
+    
+    for row in rows:
+        key = (row['periode'], row['jenis_perkara'])
+        data_summary[key]['PERIODE'] = row['periode']
+        data_summary[key]['JENIS_PERKARA'] = row['jenis_perkara']
+        
+        # Map tahapan_penanganan to report columns
+        tahapan = row['tahapan_penanganan'].upper() if row['tahapan_penanganan'] else ''
+        
+        if 'PRA PENUNTUTAN' in tahapan:
+            data_summary[key]['PRA_PENUNTUTAN'] += 1
+        elif 'PENUNTUTAN' in tahapan:
+            data_summary[key]['PENUNTUTAN'] += 1
+        elif 'UPAYA HUKUM' in tahapan:
+            data_summary[key]['UPAYA_HUKUM'] += 1
+        else:
+            # Default ke pra penuntutan jika tidak jelas
+            data_summary[key]['PRA_PENUNTUTAN'] += 1
+        
+        data_summary[key]['TOTAL'] = (data_summary[key]['PRA_PENUNTUTAN'] + 
+                                     data_summary[key]['PENUNTUTAN'] + 
+                                     data_summary[key]['UPAYA_HUKUM'])
+    
+    # Convert to list
+    report_data = list(data_summary.values())
+    
+    # Calculate totals
+    total_keseluruhan = sum(item['TOTAL'] for item in report_data)
+    total_pra_penuntutan = sum(item['PRA_PENUNTUTAN'] for item in report_data)
+    total_penuntutan = sum(item['PENUNTUTAN'] for item in report_data)
+    total_upaya_hukum = sum(item['UPAYA_HUKUM'] for item in report_data)
+    
+    # Current date for display
+    current_date = datetime.now().strftime("%d %B %Y")
+    
+    return render_template('laporan_pidum_new.html',
+                         report_data=report_data,
+                         bulan=bulan,
+                         tahun=tahun,
+                         periode_filter=periode_filter,
+                         periode_options=periode_options,
+                         total_keseluruhan=total_keseluruhan,
+                         total_pra_penuntutan=total_pra_penuntutan,
+                         total_penuntutan=total_penuntutan,
+                         total_upaya_hukum=total_upaya_hukum,
+                         current_date=current_date)
+
 @app.route('/export_pidum_excel')
 def export_pidum_excel():
     data = get_pidum_data_for_export()
