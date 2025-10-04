@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Pilihan Laporan - Aplikasi Data PIDUM & PIDSUS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-chart-line"></i> Pilihan Laporan PIDUM</h4>
+            </div>
+            <div class="card-body">
+                <p class="lead">Silakan pilih jenis laporan PIDUM yang ingin Anda lihat:</p>
+                
+                <div class="row mt-4">
+                    <!-- Laporan PIDUM Klasik -->
+                    <div class="col-md-6">
+                        <div class="card h-100 border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h5><i class="fas fa-chart-bar"></i> Laporan PIDUM Klasik</h5>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-check text-success"></i> Tampilan laporan tradisional</li>
+                                    <li><i class="fas fa-check text-success"></i> Filter berdasarkan bulan dan tahun</li>
+                                    <li><i class="fas fa-check text-success"></i> Grafik analisis lengkap</li>
+                                    <li><i class="fas fa-check text-success"></i> Export ke Excel</li>
+                                    <li><i class="fas fa-check text-success"></i> Format laporan standar</li>
+                                </ul>
+                                <div class="text-center mt-4">
+                                    <a href="{{ url_for('laporan_pidum') }}" class="btn btn-primary btn-lg">
+                                        <i class="fas fa-eye"></i> Lihat Laporan Klasik
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Laporan PIDUM Baru -->
+                    <div class="col-md-6">
+                        <div class="card h-100 border-success">
+                            <div class="card-header bg-success text-white">
+                                <h5><i class="fas fa-chart-line"></i> Laporan PIDUM Baru</h5>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-check text-success"></i> Design modern dan responsif</li>
+                                    <li><i class="fas fa-check text-success"></i> Tabel dengan header teks hitam</li>
+                                    <li><i class="fas fa-check text-success"></i> Histogram jenis perkara</li>
+                                    <li><i class="fas fa-check text-success"></i> Filter periode yang fleksibel</li>
+                                    <li><i class="fas fa-check text-success"></i> Statistik cards informatif</li>
+                                    <li><i class="fas fa-star text-warning"></i> <strong>Rekomendasi</strong></li>
+                                </ul>
+                                <div class="text-center mt-4">
+                                    <a href="{{ url_for('laporan_pidum_new') }}" class="btn btn-success btn-lg">
+                                        <i class="fas fa-rocket"></i> Lihat Laporan Baru
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Info Section -->
+                <div class="row mt-5">
+                    <div class="col-md-12">
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle"></i> Informasi Laporan</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Laporan Klasik</strong> cocok untuk:</p>
+                                    <ul class="mb-0">
+                                        <li>Pengguna yang terbiasa dengan format lama</li>
+                                        <li>Keperluan laporan formal standar</li>
+                                        <li>Analisis data dengan grafik lengkap</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Laporan Baru</strong> cocok untuk:</p>
+                                    <ul class="mb-0">
+                                        <li>Tampilan modern dan user-friendly</li>
+                                        <li>Analisis focus pada jenis perkara</li>
+                                        <li>Laporan dengan design clean dan minimalis</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Navigation -->
+                <div class="row mt-4">
+                    <div class="col-md-12 text-center">
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Kembali ke Beranda
+                        </a>
+                        <a href="{{ url_for('view_pidum') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-table"></i> Lihat Data PIDUM
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+}
+
+.btn-lg {
+    padding: 12px 30px;
+    font-size: 1.1rem;
+}
+
+.list-unstyled li {
+    margin-bottom: 8px;
+}
+</style>
+{% endblock %}

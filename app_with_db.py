@@ -107,6 +107,10 @@ def index():
     stats = get_database_stats()
     return render_template('index.html', stats=stats)
 
+@app.route('/pilihan_laporan')
+def pilihan_laporan():
+    return render_template('pilihan_laporan.html')
+
 @app.route('/input_pidum', methods=['GET', 'POST'])
 def input_pidum():
     # Redirect langsung ke halaman pilihan import data PIDUM
