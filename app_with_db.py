@@ -111,6 +111,103 @@ def index():
 def pilihan_laporan():
     return render_template('pilihan_laporan.html')
 
+@app.route('/laporan_pidum_bulanan')
+def laporan_pidum_bulanan():
+    # Get filter parameters
+    tahun = request.args.get('tahun', type=int, default=2025)
+    
+    from datetime import datetime
+    import sqlite3
+    from collections import defaultdict
+    
+    # Get database connection
+    conn = sqlite3.connect('db/kejaksaan.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # Build query with year filter
+    where_clause = "WHERE strftime('%Y', tanggal) = ?"
+    params = [str(tahun)]
+    
+    # Get data from pidum_data table
+    query = f"""
+    SELECT periode, jenis_perkara, tanggal, tahapan_penanganan,
+           strftime('%m', tanggal) as bulan_num,
+           CASE strftime('%m', tanggal)
+               WHEN '01' THEN 'Januari'
+               WHEN '02' THEN 'Februari'
+               WHEN '03' THEN 'Maret'
+               WHEN '04' THEN 'April'
+               WHEN '05' THEN 'Mei'
+               WHEN '06' THEN 'Juni'
+               WHEN '07' THEN 'Juli'
+               WHEN '08' THEN 'Agustus'
+               WHEN '09' THEN 'September'
+               WHEN '10' THEN 'Oktober'
+               WHEN '11' THEN 'November'
+               WHEN '12' THEN 'Desember'
+           END as bulan_nama
+    FROM pidum_data {where_clause}
+    ORDER BY bulan_num, jenis_perkara
+    """
+    
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    
+    # Process data for report
+    data_summary = defaultdict(lambda: {
+        'BULAN': '',
+        'JENIS_PERKARA': '',
+        'JUMLAH': 0,
+        'PRA_PENUNTUTAN': 0,
+        'PENUNTUTAN': 0,
+        'UPAYA_HUKUM': 0
+    })
+    
+    for row in rows:
+        key = (row['bulan_nama'], row['jenis_perkara'])
+        data_summary[key]['BULAN'] = row['bulan_nama']
+        data_summary[key]['JENIS_PERKARA'] = row['jenis_perkara']
+        
+        # Map tahapan_penanganan to report columns
+        tahapan = row['tahapan_penanganan'].upper() if row['tahapan_penanganan'] else ''
+        
+        if 'PRA PENUNTUTAN' in tahapan:
+            data_summary[key]['PRA_PENUNTUTAN'] += 1
+        elif 'PENUNTUTAN' in tahapan:
+            data_summary[key]['PENUNTUTAN'] += 1
+        elif 'UPAYA HUKUM' in tahapan:
+            data_summary[key]['UPAYA_HUKUM'] += 1
+        else:
+            # Default ke pra penuntutan jika tidak jelas
+            data_summary[key]['PRA_PENUNTUTAN'] += 1
+        
+        data_summary[key]['JUMLAH'] = (data_summary[key]['PRA_PENUNTUTAN'] + 
+                                     data_summary[key]['PENUNTUTAN'] + 
+                                     data_summary[key]['UPAYA_HUKUM'])
+    
+    # Convert to list
+    report_data = list(data_summary.values())
+    
+    # Calculate totals
+    total_keseluruhan = sum(item['JUMLAH'] for item in report_data)
+    total_pra_penuntutan = sum(item['PRA_PENUNTUTAN'] for item in report_data)
+    total_penuntutan = sum(item['PENUNTUTAN'] for item in report_data)
+    total_upaya_hukum = sum(item['UPAYA_HUKUM'] for item in report_data)
+    
+    # Current date for display
+    current_date = datetime.now().strftime("%d %B %Y")
+    
+    return render_template('laporan_pidum_bulanan.html',
+                         report_data=report_data,
+                         tahun=tahun,
+                         total_keseluruhan=total_keseluruhan,
+                         total_pra_penuntutan=total_pra_penuntutan,
+                         total_penuntutan=total_penuntutan,
+                         total_upaya_hukum=total_upaya_hukum,
+                         current_date=current_date)
+
 @app.route('/input_pidum', methods=['GET', 'POST'])
 def input_pidum():
     # Redirect langsung ke halaman pilihan import data PIDUM

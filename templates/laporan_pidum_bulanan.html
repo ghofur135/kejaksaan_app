@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+
+{% block title %}Laporan Periode Bulanan - Aplikasi Data PIDUM & PIDSUS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4><i class="fas fa-calendar-alt"></i> Periode Bulanan - Laporan PIDUM</h4>
+                <div>
+                    <a href="{{ url_for('export_pidum_excel') }}" class="btn btn-success btn-sm">
+                        <i class="fas fa-file-excel"></i> Export Excel
+                    </a>
+                    <button onclick="window.print()" class="btn btn-info btn-sm">
+                        <i class="fas fa-print"></i> Print
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Filter Section -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <form method="GET" class="row g-3">
+                            <div class="col-md-3">
+                                <label for="tahun" class="form-label">Tahun</label>
+                                <select name="tahun" id="tahun" class="form-select">
+                                    {% for year in range(2023, 2027) %}
+                                    <option value="{{ year }}" {% if tahun and tahun == year %}selected{% endif %}>{{ year }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary me-2">
+                                    <i class="fas fa-filter"></i> Filter
+                                </button>
+                                <a href="{{ url_for('laporan_pidum_bulanan') }}" class="btn btn-secondary">
+                                    <i class="fas fa-refresh"></i> Reset
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Summary Info -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle"></i> Informasi Laporan</h6>
+                            <p class="mb-0">
+                                <strong>Tahun:</strong> {{ tahun if tahun else '2025' }}
+                                | <strong>Total Kasus:</strong> {{ total_keseluruhan }} 
+                                | <strong>Data per:</strong> {{ current_date }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Table -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th rowspan="2" style="color: black; vertical-align: middle; text-align: center; border: 2px solid #000;">No</th>
+                                        <th rowspan="2" style="color: black; vertical-align: middle; text-align: center; border: 2px solid #000;">Bulan</th>
+                                        <th rowspan="2" style="color: black; vertical-align: middle; text-align: center; border: 2px solid #000;">Jenis Perkara</th>
+                                        <th rowspan="2" style="color: black; vertical-align: middle; text-align: center; border: 2px solid #000;">Jumlah</th>
+                                        <th colspan="3" style="color: black; text-align: center; border: 2px solid #000;">Tahapan Penanganan</th>
+                                    </tr>
+                                    <tr>
+                                        <th style="color: black; text-align: center; border: 2px solid #000;">Pra Penuntutan</th>
+                                        <th style="color: black; text-align: center; border: 2px solid #000;">Penuntutan</th>
+                                        <th style="color: black; text-align: center; border: 2px solid #000;">Upaya Hukum</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in report_data %}
+                                    <tr>
+                                        <td class="text-center" style="border: 1px solid #000;">{{ loop.index }}</td>
+                                        <td class="text-center" style="border: 1px solid #000;">
+                                            <span class="badge bg-primary">{{ item.BULAN }}</span>
+                                        </td>
+                                        <td style="border: 1px solid #000;">
+                                            <span class="badge bg-info">{{ item.JENIS_PERKARA }}</span>
+                                        </td>
+                                        <td class="text-center" style="border: 1px solid #000;">
+                                            <strong class="text-primary">{{ item.JUMLAH }}</strong>
+                                        </td>
+                                        <td class="text-center" style="border: 1px solid #000;">
+                                            <span class="badge bg-success">{{ item.PRA_PENUNTUTAN }}</span>
+                                        </td>
+                                        <td class="text-center" style="border: 1px solid #000;">
+                                            <span class="badge bg-warning">{{ item.PENUNTUTAN }}</span>
+                                        </td>
+                                        <td class="text-center" style="border: 1px solid #000;">
+                                            <span class="badge bg-danger">{{ item.UPAYA_HUKUM }}</span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot class="table-secondary">
+                                    <tr>
+                                        <th colspan="3" class="text-center" style="border: 2px solid #000;">TOTAL KESELURUHAN</th>
+                                        <th class="text-center" style="border: 2px solid #000;">{{ total_keseluruhan }}</th>
+                                        <th class="text-center" style="border: 2px solid #000;">{{ total_pra_penuntutan }}</th>
+                                        <th class="text-center" style="border: 2px solid #000;">{{ total_penuntutan }}</th>
+                                        <th class="text-center" style="border: 2px solid #000;">{{ total_upaya_hukum }}</th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistics Section -->
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5><i class="fas fa-chart-bar"></i> Statistik</h5>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h5 class="text-success">{{ total_pra_penuntutan }}</h5>
+                                        <p class="mb-0">Pra Penuntutan</p>
+                                        <small class="text-muted">Proses Penyelidikan & Penyidikan</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h5 class="text-warning">{{ total_penuntutan }}</h5>
+                                        <p class="mb-0">Penuntutan</p>
+                                        <small class="text-muted">Proses Penuntutan & Persidangan</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h5 class="text-danger">{{ total_upaya_hukum }}</h5>
+                                        <p class="mb-0">Upaya Hukum</p>
+                                        <small class="text-muted">Banding, Kasasi & Eksekusi</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card text-center bg-primary text-white">
+                                    <div class="card-body">
+                                        <h5>{{ total_keseluruhan }}</h5>
+                                        <p class="mb-0">Total Kasus</p>
+                                        <small>Keseluruhan Tahun {{ tahun if tahun else '2025' }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chart Section -->
+                <div class="row mt-5">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6>Distribusi per Tahapan</h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="tahapanChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6>Distribusi per Bulan</h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="bulanChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation -->
+                <div class="row mt-4">
+                    <div class="col-md-12 text-center">
+                        <a href="{{ url_for('pilihan_laporan') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Kembali ke Pilihan Laporan
+                        </a>
+                        <a href="{{ url_for('laporan_pidum') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-chart-bar"></i> Laporan Klasik
+                        </a>
+                        <a href="{{ url_for('laporan_pidum_new') }}" class="btn btn-outline-success">
+                            <i class="fas fa-chart-line"></i> Laporan Modern
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Data for charts
+const tahapanData = {
+    'Pra Penuntutan': {{ total_pra_penuntutan }},
+    'Penuntutan': {{ total_penuntutan }},
+    'Upaya Hukum': {{ total_upaya_hukum }}
+};
+
+const reportData = {{ report_data | tojson }};
+
+// Process bulan data
+const bulanData = {};
+reportData.forEach(item => {
+    if (bulanData[item.BULAN]) {
+        bulanData[item.BULAN] += item.JUMLAH;
+    } else {
+        bulanData[item.BULAN] = item.JUMLAH;
+    }
+});
+
+// Tahapan Chart
+const tahapanCtx = document.getElementById('tahapanChart').getContext('2d');
+new Chart(tahapanCtx, {
+    type: 'bar',
+    data: {
+        labels: Object.keys(tahapanData),
+        datasets: [{
+            label: 'Jumlah Kasus',
+            data: Object.values(tahapanData),
+            backgroundColor: ['#28a745', '#ffc107', '#dc3545'],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+// Bulan Chart
+const bulanCtx = document.getElementById('bulanChart').getContext('2d');
+new Chart(bulanCtx, {
+    type: 'line',
+    data: {
+        labels: Object.keys(bulanData),
+        datasets: [{
+            label: 'Jumlah Kasus per Bulan',
+            data: Object.values(bulanData),
+            borderColor: '#007bff',
+            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+</script>
+
+<style>
+@media print {
+    .btn, .card-header .btn-group, .no-print {
+        display: none !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    .table {
+        font-size: 12px;
+    }
+    
+    .badge {
+        color: #000 !important;
+        background-color: #fff !important;
+        border: 1px solid #000 !important;
+    }
+}
+
+.table th {
+    font-weight: bold;
+}
+
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+</style>
+{% endblock %}
+{% endblock %}

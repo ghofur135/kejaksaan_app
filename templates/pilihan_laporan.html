@@ -14,7 +14,7 @@
                 
                 <div class="row mt-4">
                     <!-- Laporan PIDUM Klasik -->
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="card h-100 border-primary">
                             <div class="card-header bg-primary text-white">
                                 <h5><i class="fas fa-chart-bar"></i> Laporan PIDUM Klasik</h5>
@@ -37,10 +37,10 @@
                     </div>
                     
                     <!-- Laporan PIDUM Baru -->
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="card h-100 border-success">
                             <div class="card-header bg-success text-white">
-                                <h5><i class="fas fa-chart-line"></i> Laporan PIDUM Baru</h5>
+                                <h5><i class="fas fa-chart-line"></i> Laporan PIDUM Modern</h5>
                             </div>
                             <div class="card-body">
                                 <ul class="list-unstyled">
@@ -49,11 +49,34 @@
                                     <li><i class="fas fa-check text-success"></i> Histogram jenis perkara</li>
                                     <li><i class="fas fa-check text-success"></i> Filter periode yang fleksibel</li>
                                     <li><i class="fas fa-check text-success"></i> Statistik cards informatif</li>
-                                    <li><i class="fas fa-star text-warning"></i> <strong>Rekomendasi</strong></li>
                                 </ul>
                                 <div class="text-center mt-4">
                                     <a href="{{ url_for('laporan_pidum_new') }}" class="btn btn-success btn-lg">
-                                        <i class="fas fa-rocket"></i> Lihat Laporan Baru
+                                        <i class="fas fa-rocket"></i> Lihat Laporan Modern
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Laporan PIDUM Periode Bulanan -->
+                    <div class="col-md-4">
+                        <div class="card h-100 border-warning">
+                            <div class="card-header bg-warning text-dark">
+                                <h5><i class="fas fa-calendar-alt"></i> Laporan Periode Bulanan</h5>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-check text-success"></i> Format tabel periode bulanan</li>
+                                    <li><i class="fas fa-check text-success"></i> Header multi-level yang rapi</li>
+                                    <li><i class="fas fa-check text-success"></i> Grouping per bulan dan jenis perkara</li>
+                                    <li><i class="fas fa-check text-success"></i> Chart trend bulanan</li>
+                                    <li><i class="fas fa-check text-success"></i> Statistik per tahapan</li>
+                                    <li><i class="fas fa-star text-warning"></i> <strong>Format Terbaru</strong></li>
+                                </ul>
+                                <div class="text-center mt-4">
+                                    <a href="{{ url_for('laporan_pidum_bulanan') }}" class="btn btn-warning btn-lg text-dark">
+                                        <i class="fas fa-calendar"></i> Lihat Laporan Bulanan
                                     </a>
                                 </div>
                             </div>
@@ -67,7 +90,7 @@
                         <div class="alert alert-info">
                             <h6><i class="fas fa-info-circle"></i> Informasi Laporan</h6>
                             <div class="row">
-                                <div class="col-md-6">
+                                <div class="col-md-4">
                                     <p><strong>Laporan Klasik</strong> cocok untuk:</p>
                                     <ul class="mb-0">
                                         <li>Pengguna yang terbiasa dengan format lama</li>
@@ -75,12 +98,20 @@
                                         <li>Analisis data dengan grafik lengkap</li>
                                     </ul>
                                 </div>
-                                <div class="col-md-6">
-                                    <p><strong>Laporan Baru</strong> cocok untuk:</p>
+                                <div class="col-md-4">
+                                    <p><strong>Laporan Modern</strong> cocok untuk:</p>
                                     <ul class="mb-0">
                                         <li>Tampilan modern dan user-friendly</li>
                                         <li>Analisis focus pada jenis perkara</li>
                                         <li>Laporan dengan design clean dan minimalis</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-4">
+                                    <p><strong>Laporan Bulanan</strong> cocok untuk:</p>
+                                    <ul class="mb-0">
+                                        <li>Analisis per periode bulanan</li>
+                                        <li>Format tabel yang detail dan terstruktur</li>
+                                        <li>Laporan formal dengan layout profesional</li>
                                     </ul>
                                 </div>
                             </div>
