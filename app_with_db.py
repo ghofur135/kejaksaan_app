@@ -376,6 +376,8 @@ def laporan_pidum_new():
     bulan = request.args.get('bulan', type=int)
     tahun = request.args.get('tahun', type=int, default=2025)
     periode_filter = request.args.get('periode')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
     
     from datetime import datetime
     import sqlite3
@@ -402,6 +404,14 @@ def laporan_pidum_new():
         where_conditions.append("periode = ?")
         params.append(periode_filter)
     
+    if start_date:
+        where_conditions.append("tanggal >= ?")
+        params.append(start_date)
+    
+    if end_date:
+        where_conditions.append("tanggal <= ?")
+        params.append(end_date)
+    
     where_clause = ""
     if where_conditions:
         where_clause = "WHERE " + " AND ".join(where_conditions)
@@ -410,7 +420,7 @@ def laporan_pidum_new():
     query = f"""
     SELECT periode, jenis_perkara, tanggal, tahapan_penanganan
     FROM pidum_data {where_clause}
-    ORDER BY periode, jenis_perkara
+    ORDER BY tanggal DESC, periode, jenis_perkara
     """
     
     cursor.execute(query, params)
@@ -426,6 +436,7 @@ def laporan_pidum_new():
     data_summary = defaultdict(lambda: {
         'PERIODE': '',
         'JENIS_PERKARA': '',
+        'TANGGAL': '',
         'TOTAL': 0,
         'PRA_PENUNTUTAN': 0,
         'PENUNTUTAN': 0,
@@ -433,9 +444,10 @@ def laporan_pidum_new():
     })
     
     for row in rows:
-        key = (row['periode'], row['jenis_perkara'])
+        key = (row['periode'], row['jenis_perkara'], row['tanggal'])
         data_summary[key]['PERIODE'] = row['periode']
         data_summary[key]['JENIS_PERKARA'] = row['jenis_perkara']
+        data_summary[key]['TANGGAL'] = row['tanggal']
         
         # Map tahapan_penanganan to report columns
         tahapan = row['tahapan_penanganan'].upper() if row['tahapan_penanganan'] else ''
@@ -472,6 +484,8 @@ def laporan_pidum_new():
                          tahun=tahun,
                          periode_filter=periode_filter,
                          periode_options=periode_options,
+                         start_date=start_date,
+                         end_date=end_date,
                          total_keseluruhan=total_keseluruhan,
                          total_pra_penuntutan=total_pra_penuntutan,
                          total_penuntutan=total_penuntutan,
