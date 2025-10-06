@@ -161,23 +161,13 @@
 
                 <!-- Chart Section -->
                 <div class="row mt-5">
-                    <div class="col-md-6">
+                    <div class="col-md-12">
                         <div class="card">
                             <div class="card-header">
-                                <h6>Distribusi per Tahapan</h6>
+                                <h6>Distribusi Jenis Perkara per Tahapan Penanganan</h6>
                             </div>
                             <div class="card-body">
-                                <canvas id="tahapanChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h6>Distribusi per Bulan</h6>
-                            </div>
-                            <div class="card-body">
-                                <canvas id="bulanChart"></canvas>
+                                <canvas id="tahapanJenisChart" style="height: 400px;"></canvas>
                             </div>
                         </div>
                     </div>
@@ -205,69 +195,93 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-// Data for charts
-const tahapanData = {
-    'Pra Penuntutan': {{ total_pra_penuntutan }},
-    'Penuntutan': {{ total_penuntutan }},
-    'Upaya Hukum': {{ total_upaya_hukum }}
-};
-
 const reportData = {{ report_data | tojson }};
 
-// Process bulan data
-const bulanData = {};
+// Process data untuk grafik tahapan-jenis perkara
+const tahapanJenisData = {
+    'Pra Penuntutan': {},
+    'Penuntutan': {},
+    'Upaya Hukum': {}
+};
+
+// Aggregate data berdasarkan tahapan dan jenis perkara
 reportData.forEach(item => {
-    if (bulanData[item.BULAN]) {
-        bulanData[item.BULAN] += item.JUMLAH;
-    } else {
-        bulanData[item.BULAN] = item.JUMLAH;
+    if (item.PRA_PENUNTUTAN > 0) {
+        tahapanJenisData['Pra Penuntutan'][item.JENIS_PERKARA] = 
+            (tahapanJenisData['Pra Penuntutan'][item.JENIS_PERKARA] || 0) + item.PRA_PENUNTUTAN;
+    }
+    if (item.PENUNTUTAN > 0) {
+        tahapanJenisData['Penuntutan'][item.JENIS_PERKARA] = 
+            (tahapanJenisData['Penuntutan'][item.JENIS_PERKARA] || 0) + item.PENUNTUTAN;
+    }
+    if (item.UPAYA_HUKUM > 0) {
+        tahapanJenisData['Upaya Hukum'][item.JENIS_PERKARA] = 
+            (tahapanJenisData['Upaya Hukum'][item.JENIS_PERKARA] || 0) + item.UPAYA_HUKUM;
     }
 });
 
-// Tahapan Chart
-const tahapanCtx = document.getElementById('tahapanChart').getContext('2d');
-new Chart(tahapanCtx, {
+// Get semua jenis perkara unik
+const allJenisPerkara = new Set();
+Object.values(tahapanJenisData).forEach(tahapan => {
+    Object.keys(tahapan).forEach(jenis => allJenisPerkara.add(jenis));
+});
+const jenisPerkaraList = Array.from(allJenisPerkara).sort();
+
+// Prepare datasets untuk grouped bar chart
+const colors = {
+    'Pra Penuntutan': '#28a745',
+    'Penuntutan': '#ffc107', 
+    'Upaya Hukum': '#dc3545'
+};
+
+const datasets = Object.keys(tahapanJenisData).map(tahapan => {
+    const data = jenisPerkaraList.map(jenis => tahapanJenisData[tahapan][jenis] || 0);
+    return {
+        label: tahapan,
+        data: data,
+        backgroundColor: colors[tahapan],
+        borderColor: colors[tahapan],
+        borderWidth: 1
+    };
+});
+
+// Tahapan-Jenis Chart (Grouped Bar)
+const tahapanJenisCtx = document.getElementById('tahapanJenisChart').getContext('2d');
+new Chart(tahapanJenisCtx, {
     type: 'bar',
     data: {
-        labels: Object.keys(tahapanData),
-        datasets: [{
-            label: 'Jumlah Kasus',
-            data: Object.values(tahapanData),
-            backgroundColor: ['#28a745', '#ffc107', '#dc3545'],
-            borderWidth: 1
-        }]
+        labels: jenisPerkaraList,
+        datasets: datasets
     },
     options: {
         responsive: true,
-        scales: {
-            y: {
-                beginAtZero: true
+        maintainAspectRatio: false,
+        plugins: {
+            title: {
+                display: true,
+                text: 'Distribusi Jenis Perkara per Tahapan Penanganan'
+            },
+            legend: {
+                position: 'top'
             }
-        }
-    }
-});
-
-// Bulan Chart
-const bulanCtx = document.getElementById('bulanChart').getContext('2d');
-new Chart(bulanCtx, {
-    type: 'line',
-    data: {
-        labels: Object.keys(bulanData),
-        datasets: [{
-            label: 'Jumlah Kasus per Bulan',
-            data: Object.values(bulanData),
-            borderColor: '#007bff',
-            backgroundColor: 'rgba(0, 123, 255, 0.1)',
-            tension: 0.4,
-            fill: true
-        }]
-    },
-    options: {
-        responsive: true,
+        },
         scales: {
+            x: {
+                ticks: {
+                    maxRotation: 45,
+                    minRotation: 0
+                }
+            },
             y: {
-                beginAtZero: true
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
             }
+        },
+        interaction: {
+            intersect: false,
+            mode: 'index'
         }
     }
 });
