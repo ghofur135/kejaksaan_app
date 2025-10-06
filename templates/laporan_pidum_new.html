@@ -101,9 +101,23 @@
                 <!-- Table Section -->
                 <div class="row">
                     <div class="col-md-12">
-                        <h5><i class="fas fa-table"></i> Tabel Laporan</h5>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5><i class="fas fa-table"></i> Tabel Laporan</h5>
+                            <div class="d-flex align-items-center">
+                                <label for="entriesPerPage" class="form-label me-2 mb-0">Tampilkan:</label>
+                                <select id="entriesPerPage" class="form-select form-select-sm" style="width: auto;">
+                                    <option value="10">10</option>
+                                    <option value="20">20</option>
+                                    <option value="30">30</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                                <span class="ms-2">entri</span>
+                            </div>
+                        </div>
+                        
                         <div class="table-responsive">
-                            <table class="table table-bordered table-striped">
+                            <table class="table table-bordered table-striped" id="reportTable">
                                 <thead class="table-light">
                                     <tr>
                                         <th width="4%" style="color: black;">No</th>
@@ -116,7 +130,7 @@
                                         <th width="12%" style="color: black;">Upaya Hukum</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="tableBody">
                                     {% for item in report_data %}
                                     <tr>
                                         <td class="text-center">{{ loop.index }}</td>
@@ -162,6 +176,18 @@
                                     </tr>
                                 </tfoot>
                             </table>
+                        </div>
+                        
+                        <!-- Pagination Controls -->
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <div id="paginationInfo" class="text-muted">
+                                Menampilkan 1 sampai 10 dari {{ report_data|length }} entri
+                            </div>
+                            <nav aria-label="Table pagination">
+                                <ul class="pagination pagination-sm mb-0" id="paginationControls">
+                                    <!-- Pagination akan di-generate oleh JavaScript -->
+                                </ul>
+                            </nav>
                         </div>
                     </div>
                 </div>
@@ -232,6 +258,131 @@
 <script>
 // Data for charts
 const reportData = {{ report_data | tojson }};
+
+// Pagination functionality
+let currentPage = 1;
+let entriesPerPage = 10;
+let allRows = [];
+
+// Get all table rows (excluding header and footer)
+function initializePagination() {
+    const tableBody = document.getElementById('tableBody');
+    allRows = Array.from(tableBody.getElementsByTagName('tr'));
+    
+    // Set default entries per page
+    document.getElementById('entriesPerPage').value = entriesPerPage;
+    
+    // Add event listener for entries per page change
+    document.getElementById('entriesPerPage').addEventListener('change', function() {
+        entriesPerPage = parseInt(this.value);
+        currentPage = 1;
+        displayPage();
+    });
+    
+    displayPage();
+}
+
+function displayPage() {
+    const startIndex = (currentPage - 1) * entriesPerPage;
+    const endIndex = startIndex + entriesPerPage;
+    
+    // Hide all rows first
+    allRows.forEach(row => row.style.display = 'none');
+    
+    // Show rows for current page
+    for (let i = startIndex; i < endIndex && i < allRows.length; i++) {
+        allRows[i].style.display = '';
+        // Update row number
+        const firstCell = allRows[i].getElementsByTagName('td')[0];
+        if (firstCell) {
+            firstCell.textContent = i + 1;
+        }
+    }
+    
+    updatePaginationInfo();
+    updatePaginationControls();
+}
+
+function updatePaginationInfo() {
+    const totalEntries = allRows.length;
+    const startIndex = (currentPage - 1) * entriesPerPage + 1;
+    const endIndex = Math.min(currentPage * entriesPerPage, totalEntries);
+    
+    const infoElement = document.getElementById('paginationInfo');
+    infoElement.textContent = `Menampilkan ${startIndex} sampai ${endIndex} dari ${totalEntries} entri`;
+}
+
+function updatePaginationControls() {
+    const totalPages = Math.ceil(allRows.length / entriesPerPage);
+    const paginationControls = document.getElementById('paginationControls');
+    
+    paginationControls.innerHTML = '';
+    
+    // Previous button
+    const prevLi = document.createElement('li');
+    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(${currentPage - 1})">«</a>`;
+    paginationControls.appendChild(prevLi);
+    
+    // Page numbers
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, currentPage + 2);
+    
+    if (startPage > 1) {
+        const firstLi = document.createElement('li');
+        firstLi.className = 'page-item';
+        firstLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(1)">1</a>`;
+        paginationControls.appendChild(firstLi);
+        
+        if (startPage > 2) {
+            const dotsLi = document.createElement('li');
+            dotsLi.className = 'page-item disabled';
+            dotsLi.innerHTML = `<span class="page-link">...</span>`;
+            paginationControls.appendChild(dotsLi);
+        }
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const li = document.createElement('li');
+        li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+        li.innerHTML = `<a class="page-link" href="#" onclick="changePage(${i})">${i}</a>`;
+        paginationControls.appendChild(li);
+    }
+    
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            const dotsLi = document.createElement('li');
+            dotsLi.className = 'page-item disabled';
+            dotsLi.innerHTML = `<span class="page-link">...</span>`;
+            paginationControls.appendChild(dotsLi);
+        }
+        
+        const lastLi = document.createElement('li');
+        lastLi.className = 'page-item';
+        lastLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(${totalPages})">${totalPages}</a>`;
+        paginationControls.appendChild(lastLi);
+    }
+    
+    // Next button
+    const nextLi = document.createElement('li');
+    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(${currentPage + 1})">»</a>`;
+    paginationControls.appendChild(nextLi);
+}
+
+function changePage(page) {
+    const totalPages = Math.ceil(allRows.length / entriesPerPage);
+    if (page >= 1 && page <= totalPages) {
+        currentPage = page;
+        displayPage();
+    }
+    return false;
+}
+
+// Initialize pagination when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializePagination();
+});
 
 // Prepare data for jenis perkara chart
 const jenisPerkaraData = {};
