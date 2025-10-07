@@ -115,6 +115,7 @@ def pilihan_laporan():
 def laporan_pidum_bulanan():
     # Get filter parameters
     tahun = request.args.get('tahun', type=int, default=2025)
+    bulan = request.args.get('bulan', type=int)
     
     from datetime import datetime
     import sqlite3
@@ -125,9 +126,15 @@ def laporan_pidum_bulanan():
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
-    # Build query with year filter
-    where_clause = "WHERE strftime('%Y', tanggal) = ?"
+    # Build query with year and optional month filter
+    where_conditions = ["strftime('%Y', tanggal) = ?"]
     params = [str(tahun)]
+    
+    if bulan:
+        where_conditions.append("strftime('%m', tanggal) = ?")
+        params.append(f"{bulan:02d}")
+    
+    where_clause = "WHERE " + " AND ".join(where_conditions)
     
     # Get data from pidum_data table
     query = f"""
@@ -153,6 +160,32 @@ def laporan_pidum_bulanan():
     
     cursor.execute(query, params)
     rows = cursor.fetchall()
+    
+    # Get available months for filter dropdown
+    month_query = f"""
+    SELECT DISTINCT strftime('%m', tanggal) as bulan_num,
+           CASE strftime('%m', tanggal)
+               WHEN '01' THEN 'Januari'
+               WHEN '02' THEN 'Februari'
+               WHEN '03' THEN 'Maret'
+               WHEN '04' THEN 'April'
+               WHEN '05' THEN 'Mei'
+               WHEN '06' THEN 'Juni'
+               WHEN '07' THEN 'Juli'
+               WHEN '08' THEN 'Agustus'
+               WHEN '09' THEN 'September'
+               WHEN '10' THEN 'Oktober'
+               WHEN '11' THEN 'November'
+               WHEN '12' THEN 'Desember'
+           END as bulan_nama
+    FROM pidum_data 
+    WHERE strftime('%Y', tanggal) = ?
+    ORDER BY bulan_num
+    """
+    
+    cursor.execute(month_query, [str(tahun)])
+    available_months = cursor.fetchall()
+    
     conn.close()
     
     # Process data for report
@@ -165,23 +198,66 @@ def laporan_pidum_bulanan():
         'UPAYA_HUKUM': 0
     })
     
+    # Process data for charts by tahapan
+    chart_data = {
+        'pra_penuntutan': defaultdict(int),
+        'penuntutan': defaultdict(int),
+        'upaya_hukum': defaultdict(int)
+    }
+    
+    # Normalisasi mapping untuk tahapan
+    def normalize_tahapan(tahapan_text):
+        if not tahapan_text:
+            return 'pra_penuntutan'
+        tahapan_upper = tahapan_text.upper().strip()
+        if 'PRA' in tahapan_upper or 'PENYIDIKAN' in tahapan_upper:
+            return 'pra_penuntutan'
+        elif 'PENUNTUTAN' in tahapan_upper and 'PRA' not in tahapan_upper:
+            return 'penuntutan'
+        elif 'UPAYA' in tahapan_upper or 'HUKUM' in tahapan_upper or 'BANDING' in tahapan_upper or 'KASASI' in tahapan_upper:
+            return 'upaya_hukum'
+        else:
+            return 'pra_penuntutan'
+    
+    # Normalisasi mapping untuk jenis perkara
+    def normalize_jenis_perkara(jenis_text):
+        if not jenis_text:
+            return 'Perkara Lainnya'
+        jenis_upper = jenis_text.upper().strip()
+        if 'NARKOT' in jenis_upper or 'NARKOBA' in jenis_upper:
+            return 'Narkoba'
+        elif 'ANAK' in jenis_upper:
+            return 'Perkara Anak'
+        elif 'SUSILA' in jenis_upper or 'KESUSILAAN' in jenis_upper:
+            return 'Kesusilaan'
+        elif 'JUDI' in jenis_upper:
+            return 'Judi'
+        elif 'KDRT' in jenis_upper or 'KEKERASAN DALAM RUMAH' in jenis_upper:
+            return 'KDRT'
+        elif 'OHARDA' in jenis_upper or 'HARDA' in jenis_upper:
+            return 'OHARDA'
+        else:
+            return 'Perkara Lainnya'
+    
     for row in rows:
         key = (row['bulan_nama'], row['jenis_perkara'])
         data_summary[key]['BULAN'] = row['bulan_nama']
         data_summary[key]['JENIS_PERKARA'] = row['jenis_perkara']
         
-        # Map tahapan_penanganan to report columns
-        tahapan = row['tahapan_penanganan'].upper() if row['tahapan_penanganan'] else ''
+        # Normalisasi tahapan dan jenis perkara
+        tahapan_normalized = normalize_tahapan(row['tahapan_penanganan'])
+        jenis_normalized = normalize_jenis_perkara(row['jenis_perkara'])
         
-        if 'PRA PENUNTUTAN' in tahapan:
+        # Update data summary
+        if tahapan_normalized == 'pra_penuntutan':
             data_summary[key]['PRA_PENUNTUTAN'] += 1
-        elif 'PENUNTUTAN' in tahapan:
+        elif tahapan_normalized == 'penuntutan':
             data_summary[key]['PENUNTUTAN'] += 1
-        elif 'UPAYA HUKUM' in tahapan:
+        elif tahapan_normalized == 'upaya_hukum':
             data_summary[key]['UPAYA_HUKUM'] += 1
-        else:
-            # Default ke pra penuntutan jika tidak jelas
-            data_summary[key]['PRA_PENUNTUTAN'] += 1
+        
+        # Update chart data dengan normalisasi
+        chart_data[tahapan_normalized][jenis_normalized] += 1
         
         data_summary[key]['JUMLAH'] = (data_summary[key]['PRA_PENUNTUTAN'] + 
                                      data_summary[key]['PENUNTUTAN'] + 
@@ -202,6 +278,9 @@ def laporan_pidum_bulanan():
     return render_template('laporan_pidum_bulanan.html',
                          report_data=report_data,
                          tahun=tahun,
+                         bulan=bulan,
+                         available_months=available_months,
+                         chart_data=chart_data,
                          total_keseluruhan=total_keseluruhan,
                          total_pra_penuntutan=total_pra_penuntutan,
                          total_penuntutan=total_penuntutan,
@@ -542,7 +621,433 @@ def export_pidum_excel():
     
     return send_file(
         output,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
+@app.route('/export_pidum_new_excel')
+def export_pidum_new_excel():
+    # Get filter parameters from request
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    bulan = request.args.get('bulan', type=int)
+    tahun = request.args.get('tahun', type=int, default=2025)
+    periode_filter = request.args.get('periode')
+    jenis_perkara_filter = request.args.get('jenis_perkara')
+    tahapan_filter = request.args.get('tahapan')
+    
+    import sqlite3
+    from collections import defaultdict
+    
+    # Get database connection
+    conn = sqlite3.connect('db/kejaksaan.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # Build WHERE clause based on filters
+    where_conditions = []
+    params = []
+    
+    if start_date and end_date:
+        where_conditions.append("DATE(tanggal) BETWEEN ? AND ?")
+        params.extend([start_date, end_date])
+    elif bulan and tahun:
+        where_conditions.append("strftime('%m', tanggal) = ? AND strftime('%Y', tanggal) = ?")
+        params.extend([f"{bulan:02d}", str(tahun)])
+    elif tahun:
+        where_conditions.append("strftime('%Y', tanggal) = ?")
+        params.append(str(tahun))
+    
+    if periode_filter:
+        where_conditions.append("periode = ?")
+        params.append(periode_filter)
+    
+    if jenis_perkara_filter:
+        where_conditions.append("jenis_perkara = ?")
+        params.append(jenis_perkara_filter)
+    
+    if tahapan_filter:
+        where_conditions.append("tahapan_penanganan = ?")
+        params.append(tahapan_filter)
+    
+    where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+    
+    # Get filtered data
+    query = f"""
+    SELECT no, periode, tanggal, jenis_perkara, tahapan_penanganan, keterangan, created_at
+    FROM pidum_data 
+    WHERE {where_clause}
+    ORDER BY tanggal DESC, id DESC
+    """
+    
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    
+    # Convert to list of dictionaries
+    data = []
+    for row in rows:
+        data.append({
+            'No': row['no'],
+            'Periode': row['periode'],
+            'Tanggal Transaksi': row['tanggal'],
+            'Jenis Perkara': row['jenis_perkara'],
+            'Tahapan Penanganan': row['tahapan_penanganan'],
+            'Keterangan': row['keterangan'],
+            'Tanggal Input': row['created_at']
+        })
+    
+    conn.close()
+    
+    if not data:
+        flash('Tidak ada data untuk filter yang dipilih', 'warning')
+        return redirect(url_for('laporan_pidum_new'))
+    
+    # Create DataFrame
+    df = pd.DataFrame(data)
+    
+    # Create Excel file with chart
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, sheet_name='Data PIDUM', index=False, startrow=6)
+        
+        # Get the workbook and worksheet
+        workbook = writer.book
+        worksheet = writer.sheets['Data PIDUM']
+        
+        # Add title and filter info
+        worksheet['A1'] = 'LAPORAN PIDUM PER TANGGAL'
+        worksheet['A1'].font = Font(size=16, bold=True)
+        worksheet['A2'] = f'Tahun: {tahun}'
+        if bulan:
+            bulan_nama = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+                         'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][bulan]
+            worksheet['A2'] = f'Tahun: {tahun}, Bulan: {bulan_nama}'
+        if start_date and end_date:
+            worksheet['A3'] = f'Periode: {start_date} s/d {end_date}'
+        worksheet['A4'] = f'Total Data: {len(data)} record'
+        worksheet['A5'] = f'Dicetak pada: {datetime.now().strftime("%d %B %Y %H:%M")}'
+        
+        # Style the header (row 7)
+        header_font = Font(bold=True, color='FFFFFF')
+        header_fill = PatternFill(start_color='4F81BD', end_color='4F81BD', fill_type='solid')
+        header_alignment = Alignment(horizontal='center', vertical='center')
+        
+        for cell in worksheet[7]:  # Header row
+            if cell.value:  # Only style cells with content
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_alignment
+        
+        # Auto-adjust column width
+        for column in worksheet.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min((max_length + 2), 50)  # Max width 50
+            worksheet.column_dimensions[column_letter].width = adjusted_width
+    
+    output.seek(0)
+    
+    # Generate filename with filter info
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filter_info = f"tahun_{tahun}"
+    if bulan:
+        filter_info += f"_bulan_{bulan}"
+    if start_date and end_date:
+        filter_info += f"_{start_date}_to_{end_date}"
+    
+    filename = f"laporan_pidum_per_tanggal_{filter_info}_{timestamp}.xlsx"
+    
+    return send_file(
+        output,
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=filename
+    )
+
+@app.route('/export_pidum_new_word')
+def export_pidum_new_word():
+    try:
+        from docx import Document
+        from docx.shared import Inches, Pt
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.enum.table import WD_TABLE_ALIGNMENT
+        import matplotlib.pyplot as plt
+        import matplotlib
+        matplotlib.use('Agg')  # Use non-interactive backend
+        import numpy as np
+        from collections import defaultdict
+    except ImportError as e:
+        flash(f'Library tidak tersedia: {str(e)}. Install dengan: pip install python-docx matplotlib', 'error')
+        return redirect(url_for('laporan_pidum_new'))
+    
+    # Get filter parameters from request
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    bulan = request.args.get('bulan', type=int)
+    tahun = request.args.get('tahun', type=int, default=2025)
+    periode_filter = request.args.get('periode')
+    jenis_perkara_filter = request.args.get('jenis_perkara')
+    tahapan_filter = request.args.get('tahapan')
+    
+    import sqlite3
+    
+    # Get database connection
+    conn = sqlite3.connect('db/kejaksaan.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # Build WHERE clause based on filters
+    where_conditions = []
+    params = []
+    
+    if start_date and end_date:
+        where_conditions.append("DATE(tanggal) BETWEEN ? AND ?")
+        params.extend([start_date, end_date])
+    elif bulan and tahun:
+        where_conditions.append("strftime('%m', tanggal) = ? AND strftime('%Y', tanggal) = ?")
+        params.extend([f"{bulan:02d}", str(tahun)])
+    elif tahun:
+        where_conditions.append("strftime('%Y', tanggal) = ?")
+        params.append(str(tahun))
+    
+    if periode_filter:
+        where_conditions.append("periode = ?")
+        params.append(periode_filter)
+    
+    if jenis_perkara_filter:
+        where_conditions.append("jenis_perkara = ?")
+        params.append(jenis_perkara_filter)
+    
+    if tahapan_filter:
+        where_conditions.append("tahapan_penanganan = ?")
+        params.append(tahapan_filter)
+    
+    where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+    
+    # Get filtered data
+    query = f"""
+    SELECT no, periode, tanggal, jenis_perkara, tahapan_penanganan, keterangan, created_at
+    FROM pidum_data 
+    WHERE {where_clause}
+    ORDER BY tanggal DESC, id DESC
+    """
+    
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    
+    if not rows:
+        flash('Tidak ada data untuk filter yang dipilih', 'warning')
+        return redirect(url_for('laporan_pidum_new'))
+    
+    # Process data for chart
+    chart_data = defaultdict(int)
+    all_jenis_perkara = ['Narkoba', 'Perkara Anak', 'Kesusilaan', 'Judi', 'KDRT', 'OHARDA', 'Perkara Lainnya']
+    
+    # Normalisasi jenis perkara
+    def normalize_jenis_perkara(jenis_text):
+        if not jenis_text:
+            return 'Perkara Lainnya'
+        jenis_upper = jenis_text.upper().strip()
+        if 'NARKOT' in jenis_upper or 'NARKOBA' in jenis_upper:
+            return 'Narkoba'
+        elif 'ANAK' in jenis_upper:
+            return 'Perkara Anak'
+        elif 'SUSILA' in jenis_upper or 'KESUSILAAN' in jenis_upper:
+            return 'Kesusilaan'
+        elif 'JUDI' in jenis_upper:
+            return 'Judi'
+        elif 'KDRT' in jenis_upper or 'KEKERASAN DALAM RUMAH' in jenis_upper:
+            return 'KDRT'
+        elif 'OHARDA' in jenis_upper or 'HARDA' in jenis_upper:
+            return 'OHARDA'
+        else:
+            return 'Perkara Lainnya'
+    
+    # Count data for chart
+    for row in rows:
+        normalized_jenis = normalize_jenis_perkara(row['jenis_perkara'])
+        chart_data[normalized_jenis] += 1
+    
+    # Ensure all categories are present
+    chart_values = [chart_data.get(jenis, 0) for jenis in all_jenis_perkara]
+    
+    # Create chart using matplotlib
+    plt.figure(figsize=(12, 8))
+    colors = ['#dc3545', '#28a745', '#ffc107', '#17a2b8', '#6f42c1', '#fd7e14', '#6c757d']
+    
+    bars = plt.bar(all_jenis_perkara, chart_values, color=colors)
+    plt.title('Distribusi Kasus per Jenis Perkara (Berdasarkan Filter Aktif)', fontsize=16, fontweight='bold', pad=20)
+    plt.xlabel('Jenis Perkara', fontsize=12, fontweight='bold')
+    plt.ylabel('Jumlah Kasus', fontsize=12, fontweight='bold')
+    plt.xticks(rotation=45, ha='right')
+    plt.grid(axis='y', alpha=0.3)
+    
+    # Add value labels on bars
+    for bar, value in zip(bars, chart_values):
+        if value > 0:
+            plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.1, 
+                    str(value), ha='center', va='bottom', fontweight='bold')
+    
+    plt.tight_layout()
+    
+    # Save chart to temporary file
+    import tempfile
+    chart_temp = tempfile.NamedTemporaryFile(suffix='.png', delete=False)
+    plt.savefig(chart_temp.name, dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # Create Word document
+    doc = Document()
+    
+    # Set document margins
+    sections = doc.sections
+    for section in sections:
+        section.top_margin = Inches(1)
+        section.bottom_margin = Inches(1)
+        section.left_margin = Inches(1)
+        section.right_margin = Inches(1)
+    
+    # Add header
+    header_p = doc.add_paragraph()
+    header_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    header_run = header_p.add_run('LAPORAN PIDUM PER TANGGAL')
+    header_run.font.size = Pt(16)
+    header_run.font.bold = True
+    
+    subheader_p = doc.add_paragraph()
+    subheader_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    subheader_run = subheader_p.add_run('KEJAKSAAN NEGERI')
+    subheader_run.font.size = Pt(12)
+    
+    doc.add_paragraph()  # Empty line
+    
+    # Add filter information
+    info_p = doc.add_paragraph()
+    info_text = f"Tahun: {tahun}"
+    if bulan:
+        bulan_nama = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+                     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][bulan]
+        info_text = f"Tahun: {tahun}, Bulan: {bulan_nama}"
+    if start_date and end_date:
+        info_text += f", Periode: {start_date} s/d {end_date}"
+    if periode_filter:
+        info_text += f", Periode: {periode_filter}"
+    if jenis_perkara_filter:
+        info_text += f", Jenis Perkara: {jenis_perkara_filter}"
+    if tahapan_filter:
+        info_text += f", Tahapan: {tahapan_filter}"
+    
+    info_run = info_p.add_run(f"Informasi Filter: {info_text}")
+    info_run.font.bold = True
+    
+    total_p = doc.add_paragraph()
+    total_run = total_p.add_run(f"Total Data: {len(rows)} record")
+    total_run.font.bold = True
+    
+    date_p = doc.add_paragraph()
+    date_run = date_p.add_run(f"Dicetak pada: {datetime.now().strftime('%d %B %Y %H:%M')}")
+    date_run.font.bold = True
+    
+    doc.add_paragraph()  # Empty line
+    
+    # Add chart
+    chart_p = doc.add_paragraph()
+    chart_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    chart_title = chart_p.add_run('Grafik Distribusi Jenis Perkara')
+    chart_title.font.size = Pt(14)
+    chart_title.font.bold = True
+    
+    chart_para = doc.add_paragraph()
+    chart_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    doc.add_picture(chart_temp.name, width=Inches(6))
+    
+    doc.add_paragraph()  # Empty line
+    
+    # Add table
+    table = doc.add_table(rows=1, cols=7)
+    table.style = 'Table Grid'
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    
+    # Set header row
+    header_cells = table.rows[0].cells
+    headers = ['No', 'Periode', 'Tanggal', 'Jenis Perkara', 'Tahapan Penanganan', 'Keterangan', 'Tanggal Input']
+    
+    for i, header in enumerate(headers):
+        header_cells[i].text = header
+        # Make header bold
+        for paragraph in header_cells[i].paragraphs:
+            for run in paragraph.runs:
+                run.font.bold = True
+        header_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Add data rows
+    for row in rows:
+        row_cells = table.add_row().cells
+        row_cells[0].text = str(row['no'])
+        row_cells[1].text = str(row['periode'])
+        row_cells[2].text = str(row['tanggal'])
+        row_cells[3].text = str(row['jenis_perkara'])
+        row_cells[4].text = str(row['tahapan_penanganan'])
+        row_cells[5].text = str(row['keterangan'])
+        row_cells[6].text = str(row['created_at'])
+        
+        # Center align some columns
+        row_cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        row_cells[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        row_cells[2].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Set column widths
+    widths = [Inches(0.5), Inches(1), Inches(1), Inches(1.5), Inches(1.5), Inches(2), Inches(1.5)]
+    for i, width in enumerate(widths):
+        for row in table.rows:
+            row.cells[i].width = width
+    
+    # Add total row
+    total_row = table.add_row().cells
+    total_row[0].text = "TOTAL KESELURUHAN"
+    total_row[1].text = str(len(rows))
+    
+    # Make total row bold and merge cells
+    for i in range(2):
+        for paragraph in total_row[i].paragraphs:
+            for run in paragraph.runs:
+                run.font.bold = True
+        total_row[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Merge remaining cells in total row
+    for i in range(2, 7):
+        total_row[i].text = ""
+    
+    # Clean up temporary chart file
+    import os
+    os.unlink(chart_temp.name)
+    
+    # Save to BytesIO
+    output = io.BytesIO()
+    doc.save(output)
+    output.seek(0)
+    
+    # Generate filename with filter info
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filter_info = f"tahun_{tahun}"
+    if bulan:
+        filter_info += f"_bulan_{bulan}"
+    if start_date and end_date:
+        filter_info += f"_{start_date}_to_{end_date}"
+    
+    filename = f"laporan_pidum_per_tanggal_{filter_info}_{timestamp}.docx"
+    
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         as_attachment=True,
         download_name=filename
     )

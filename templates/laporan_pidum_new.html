@@ -9,10 +9,13 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h4><i class="fas fa-chart-line"></i> Laporan PIDUM per Tanggal</h4>
                 <div>
-                    <a href="{{ url_for('export_pidum_excel') }}" class="btn btn-success btn-sm">
+                    <button onclick="exportToExcel()" class="btn btn-success btn-sm">
                         <i class="fas fa-file-excel"></i> Export Excel
-                    </a>
-                    <button onclick="window.print()" class="btn btn-info btn-sm">
+                    </button>
+                    <button onclick="exportToWord()" class="btn btn-primary btn-sm">
+                        <i class="fas fa-file-word"></i> Export Word
+                    </button>
+                    <button onclick="printReport()" class="btn btn-info btn-sm">
                         <i class="fas fa-print"></i> Print
                     </button>
                 </div>
@@ -117,7 +120,7 @@
                         </div>
                         
                         <div class="table-responsive">
-                            <table class="table table-bordered table-striped" id="reportTable">
+                            <table class="table table-bordered table-striped" id="dataTable">
                                 <thead class="table-light">
                                     <tr>
                                         <th width="4%" style="color: black;">No</th>
@@ -169,7 +172,7 @@
                                 <tfoot class="table-secondary">
                                     <tr>
                                         <th colspan="4" class="text-center">TOTAL KESELURUHAN</th>
-                                        <th class="text-center">{{ total_keseluruhan }}</th>
+                                        <th class="text-center"><span id="totalData">{{ total_keseluruhan }}</span></th>
                                         <th class="text-center">{{ total_pra_penuntutan }}</th>
                                         <th class="text-center">{{ total_penuntutan }}</th>
                                         <th class="text-center">{{ total_upaya_hukum }}</th>
@@ -489,7 +492,7 @@ function initChart() {
     
     // Create the chart
     try {
-        new Chart(chartCanvas.getContext('2d'), {
+        window.chartInstance = new Chart(chartCanvas.getContext('2d'), {
             type: 'bar',
             data: {
                 labels: labels,
@@ -538,6 +541,131 @@ function initChart() {
     } catch (error) {
         console.error('Error creating chart:', error);
     }
+}
+
+// Function untuk export ke Excel dengan filter
+function exportToExcel() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const exportUrl = new URL('/export_pidum_new_excel', window.location.origin);
+    
+    // Copy all current URL parameters to export URL
+    for (const [key, value] of urlParams) {
+        exportUrl.searchParams.set(key, value);
+    }
+    
+    // Open export URL
+    window.open(exportUrl.toString(), '_blank');
+}
+
+// Function untuk export ke Word dengan filter
+function exportToWord() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const exportUrl = new URL('/export_pidum_new_word', window.location.origin);
+    
+    // Copy all current URL parameters to export URL
+    for (const [key, value] of urlParams) {
+        exportUrl.searchParams.set(key, value);
+    }
+    
+    // Open export URL
+    window.open(exportUrl.toString(), '_blank');
+}
+
+// Function untuk print dengan grafik
+function printReport() {
+    // Convert chart to image
+    const chart = window.chartInstance;
+    if (chart) {
+        chart.options.animation = false;
+        chart.update();
+        
+        const chartCanvas = document.getElementById('jenisPerkaraChart');
+        const chartImage = chartCanvas.toDataURL('image/png');
+        
+        // Create print content
+        const printContent = `
+            <html>
+            <head>
+                <title>Laporan PIDUM per Tanggal</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 20px; }
+                    .header { text-align: center; margin-bottom: 20px; }
+                    .info { margin-bottom: 20px; padding: 10px; background: #f5f5f5; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
+                    th { background-color: #f2f2f2; font-weight: bold; }
+                    .chart { text-align: center; margin: 20px 0; }
+                    .chart img { max-width: 100%; height: auto; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h2>LAPORAN PIDUM PER TANGGAL</h2>
+                    <p>KEJAKSAAN NEGERI</p>
+                </div>
+                
+                <div class="info">
+                    <strong>Informasi Filter:</strong><br>
+                    ${getFilterInfo()}
+                    <br><strong>Total Data:</strong> ${document.getElementById('totalData').textContent} record
+                    <br><strong>Dicetak pada:</strong> ${new Date().toLocaleDateString('id-ID', {
+                        day: 'numeric', month: 'long', year: 'numeric', 
+                        hour: '2-digit', minute: '2-digit'
+                    })}
+                </div>
+                
+                <div class="chart">
+                    <h3>Grafik Distribusi Jenis Perkara</h3>
+                    <img src="${chartImage}" alt="Chart Jenis Perkara" />
+                </div>
+                
+                ${document.getElementById('dataTable').outerHTML}
+            </body>
+            </html>
+        `;
+        
+        // Open print window
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(printContent);
+        printWindow.document.close();
+        
+        // Wait for images to load then print
+        setTimeout(() => {
+            printWindow.print();
+        }, 1000);
+    } else {
+        // Fallback to regular print if chart not available
+        window.print();
+    }
+}
+
+// Helper function to get filter info for print
+function getFilterInfo() {
+    const urlParams = new URLSearchParams(window.location.search);
+    let filterInfo = [];
+    
+    if (urlParams.get('tahun')) {
+        filterInfo.push(`Tahun: ${urlParams.get('tahun')}`);
+    }
+    if (urlParams.get('bulan')) {
+        const bulanNames = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+                           'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        filterInfo.push(`Bulan: ${bulanNames[parseInt(urlParams.get('bulan'))]}`);
+    }
+    if (urlParams.get('start_date') && urlParams.get('end_date')) {
+        filterInfo.push(`Periode: ${urlParams.get('start_date')} s/d ${urlParams.get('end_date')}`);
+    }
+    if (urlParams.get('periode')) {
+        filterInfo.push(`Periode: ${urlParams.get('periode')}`);
+    }
+    if (urlParams.get('jenis_perkara')) {
+        filterInfo.push(`Jenis Perkara: ${urlParams.get('jenis_perkara')}`);
+    }
+    if (urlParams.get('tahapan')) {
+        filterInfo.push(`Tahapan: ${urlParams.get('tahapan')}`);
+    }
+    
+    return filterInfo.length > 0 ? filterInfo.join(', ') : 'Semua Data';
 }
 </script>
 

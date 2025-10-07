@@ -30,6 +30,17 @@
                                     {% endfor %}
                                 </select>
                             </div>
+                            <div class="col-md-3">
+                                <label for="bulan" class="form-label">Bulan</label>
+                                <select name="bulan" id="bulan" class="form-select">
+                                    <option value="">Semua Bulan</option>
+                                    {% for month in available_months %}
+                                    <option value="{{ month.bulan_num }}" {% if bulan and bulan == month.bulan_num|int %}selected{% endif %}>
+                                        {{ month.bulan_nama }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
                             <div class="col-md-3 d-flex align-items-end">
                                 <button type="submit" class="btn btn-primary me-2">
                                     <i class="fas fa-filter"></i> Filter
@@ -49,6 +60,12 @@
                             <h6><i class="fas fa-info-circle"></i> Informasi Laporan</h6>
                             <p class="mb-0">
                                 <strong>Tahun:</strong> {{ tahun if tahun else '2025' }}
+                                {% if bulan %}
+                                | <strong>Bulan:</strong> 
+                                {% for month in available_months %}
+                                    {% if month.bulan_num|int == bulan %}{{ month.bulan_nama }}{% endif %}
+                                {% endfor %}
+                                {% endif %}
                                 | <strong>Total Kasus:</strong> {{ total_keseluruhan }} 
                                 | <strong>Data per:</strong> {{ current_date }}
                             </p>
@@ -160,20 +177,45 @@
                 </div>
 
                 <!-- Chart Section -->
+                <!-- Chart Section -->
                 <div class="row mt-5">
                     <div class="col-md-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <h6>Distribusi Jenis Perkara per Tahapan Penanganan</h6>
+                        <h5 class="mb-4"><i class="fas fa-chart-bar"></i> Grafik Distribusi Jenis Perkara per Tahapan</h5>
+                        
+                        <!-- Grafik 1: Pra Penuntutan -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-success text-white">
+                                <h6 class="mb-0"><i class="fas fa-search"></i> 1. Pra Penuntutan</h6>
+                                <small>Tahap penyelidikan dan penyidikan</small>
                             </div>
                             <div class="card-body">
-                                <canvas id="tahapanJenisChart" style="height: 400px;"></canvas>
+                                <canvas id="praPenuntutanChart" style="height: 350px;"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Grafik 2: Penuntutan -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-warning text-dark">
+                                <h6 class="mb-0"><i class="fas fa-gavel"></i> 2. Penuntutan</h6>
+                                <small>Proses penuntutan dan persidangan</small>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="penuntutanChart" style="height: 350px;"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Grafik 3: Upaya Hukum -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-danger text-white">
+                                <h6 class="mb-0"><i class="fas fa-balance-scale"></i> 3. Upaya Hukum</h6>
+                                <small>Banding, kasasi, dan eksekusi</small>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="upayaHukumChart" style="height: 350px;"></canvas>
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Navigation -->
+                </div>                <!-- Navigation -->
                 <div class="row mt-4">
                     <div class="col-md-12 text-center">
                         <a href="{{ url_for('pilihan_laporan') }}" class="btn btn-outline-secondary">
@@ -195,95 +237,121 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-const reportData = {{ report_data | tojson }};
-
-// Process data untuk grafik tahapan-jenis perkara
-const tahapanJenisData = {
-    'Pra Penuntutan': {},
-    'Penuntutan': {},
-    'Upaya Hukum': {}
-};
-
-// Aggregate data berdasarkan tahapan dan jenis perkara
-reportData.forEach(item => {
-    if (item.PRA_PENUNTUTAN > 0) {
-        tahapanJenisData['Pra Penuntutan'][item.JENIS_PERKARA] = 
-            (tahapanJenisData['Pra Penuntutan'][item.JENIS_PERKARA] || 0) + item.PRA_PENUNTUTAN;
-    }
-    if (item.PENUNTUTAN > 0) {
-        tahapanJenisData['Penuntutan'][item.JENIS_PERKARA] = 
-            (tahapanJenisData['Penuntutan'][item.JENIS_PERKARA] || 0) + item.PENUNTUTAN;
-    }
-    if (item.UPAYA_HUKUM > 0) {
-        tahapanJenisData['Upaya Hukum'][item.JENIS_PERKARA] = 
-            (tahapanJenisData['Upaya Hukum'][item.JENIS_PERKARA] || 0) + item.UPAYA_HUKUM;
-    }
-});
-
-// Get semua jenis perkara unik
-const allJenisPerkara = new Set();
-Object.values(tahapanJenisData).forEach(tahapan => {
-    Object.keys(tahapan).forEach(jenis => allJenisPerkara.add(jenis));
-});
-const jenisPerkaraList = Array.from(allJenisPerkara).sort();
-
-// Prepare datasets untuk grouped bar chart
-const colors = {
-    'Pra Penuntutan': '#28a745',
-    'Penuntutan': '#ffc107', 
-    'Upaya Hukum': '#dc3545'
-};
-
-const datasets = Object.keys(tahapanJenisData).map(tahapan => {
-    const data = jenisPerkaraList.map(jenis => tahapanJenisData[tahapan][jenis] || 0);
-    return {
-        label: tahapan,
-        data: data,
-        backgroundColor: colors[tahapan],
-        borderColor: colors[tahapan],
-        borderWidth: 1
+document.addEventListener('DOMContentLoaded', function() {
+    // Data dari backend
+    const chartData = {{ chart_data | tojson | safe }};
+    
+    // Definisi semua jenis perkara yang wajib ditampilkan
+    const allJenisPerkara = ['Narkoba', 'Perkara Anak', 'Kesusilaan', 'Judi', 'KDRT', 'OHARDA', 'Perkara Lainnya'];
+    
+    // Warna untuk setiap jenis perkara
+    const colors = {
+        'Narkoba': '#dc3545',
+        'Perkara Anak': '#28a745', 
+        'Kesusilaan': '#ffc107',
+        'Judi': '#17a2b8',
+        'KDRT': '#6f42c1',
+        'OHARDA': '#fd7e14',
+        'Perkara Lainnya': '#6c757d'
     };
-});
-
-// Tahapan-Jenis Chart (Grouped Bar)
-const tahapanJenisCtx = document.getElementById('tahapanJenisChart').getContext('2d');
-new Chart(tahapanJenisCtx, {
-    type: 'bar',
-    data: {
-        labels: jenisPerkaraList,
-        datasets: datasets
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            title: {
-                display: true,
-                text: 'Distribusi Jenis Perkara per Tahapan Penanganan'
-            },
-            legend: {
-                position: 'top'
-            }
-        },
-        scales: {
-            x: {
-                ticks: {
-                    maxRotation: 45,
-                    minRotation: 0
-                }
-            },
-            y: {
-                beginAtZero: true,
-                ticks: {
-                    stepSize: 1
-                }
-            }
-        },
-        interaction: {
-            intersect: false,
-            mode: 'index'
+    
+    // Function untuk membuat chart
+    function createChart(canvasId, title, dataKey, themeColor) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) {
+            console.error('Canvas not found:', canvasId);
+            return;
         }
+        
+        const ctx = canvas.getContext('2d');
+        
+        // Prepare data dengan semua jenis perkara
+        const data = allJenisPerkara.map(jenis => {
+            const value = chartData[dataKey] && chartData[dataKey][jenis] ? chartData[dataKey][jenis] : 0;
+            console.log(`${title} - ${jenis}: ${value}`);
+            return value;
+        });
+        const backgroundColors = allJenisPerkara.map(jenis => colors[jenis]);
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: allJenisPerkara,
+                datasets: [{
+                    label: `Jumlah Kasus ${title}`,
+                    data: data,
+                    backgroundColor: backgroundColors,
+                    borderColor: backgroundColors,
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: `Distribusi Jenis Perkara - ${title}`,
+                        font: {
+                            size: 16,
+                            weight: 'bold'
+                        },
+                        color: themeColor
+                    },
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45,
+                            font: {
+                                size: 11
+                            }
+                        },
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1,
+                            callback: function(value) {
+                                return Number.isInteger(value) ? value : '';
+                            }
+                        },
+                        grid: {
+                            color: '#e0e0e0'
+                        }
+                    }
+                },
+                animation: {
+                    duration: 800,
+                    easing: 'easeInOutQuart'
+                }
+            }
+        });
     }
+    
+    // Debug: Log chart data
+    console.log('Chart Data:', chartData);
+    
+    // Buat 3 grafik secara berurutan
+    setTimeout(() => {
+        createChart('praPenuntutanChart', 'Pra Penuntutan', 'pra_penuntutan', '#28a745');
+    }, 100);
+    
+    setTimeout(() => {
+        createChart('penuntutanChart', 'Penuntutan', 'penuntutan', '#ffc107');
+    }, 200);
+    
+    setTimeout(() => {
+        createChart('upayaHukumChart', 'Upaya Hukum', 'upaya_hukum', '#dc3545');
+    }, 300);
 });
 </script>
 
