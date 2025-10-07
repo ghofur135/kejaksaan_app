@@ -256,194 +256,289 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-// Data for charts
+// Global variables
+let currentPage = 1;
+let rowsPerPage = 10;
+let totalRows = 0;
+let allTableRows = [];
+
+// Wait for DOM to be fully loaded
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing...');
+    initPagination();
+    initChart();
+});
+
+// Data from backend
 const reportData = {{ report_data | tojson }};
 
-// Pagination functionality
-let currentPage = 1;
-let entriesPerPage = 10;
-let allRows = [];
-
-// Get all table rows (excluding header and footer)
-function initializePagination() {
+function initPagination() {
+    console.log('Initializing pagination...');
+    
+    // Get table body and all rows
     const tableBody = document.getElementById('tableBody');
-    allRows = Array.from(tableBody.getElementsByTagName('tr'));
-    
-    // Set default entries per page
-    document.getElementById('entriesPerPage').value = entriesPerPage;
-    
-    // Add event listener for entries per page change
-    document.getElementById('entriesPerPage').addEventListener('change', function() {
-        entriesPerPage = parseInt(this.value);
-        currentPage = 1;
-        displayPage();
-    });
-    
-    displayPage();
-}
-
-function displayPage() {
-    const startIndex = (currentPage - 1) * entriesPerPage;
-    const endIndex = startIndex + entriesPerPage;
-    
-    // Hide all rows first
-    allRows.forEach(row => row.style.display = 'none');
-    
-    // Show rows for current page
-    for (let i = startIndex; i < endIndex && i < allRows.length; i++) {
-        allRows[i].style.display = '';
-        // Update row number
-        const firstCell = allRows[i].getElementsByTagName('td')[0];
-        if (firstCell) {
-            firstCell.textContent = i + 1;
-        }
+    if (!tableBody) {
+        console.error('Table body not found');
+        return;
     }
     
+    allTableRows = Array.from(tableBody.querySelectorAll('tr'));
+    totalRows = allTableRows.length;
+    
+    console.log('Found', totalRows, 'rows');
+    
+    // Setup entries per page selector
+    const entriesSelect = document.getElementById('entriesPerPage');
+    if (entriesSelect) {
+        entriesSelect.addEventListener('change', function() {
+            rowsPerPage = parseInt(this.value);
+            currentPage = 1;
+            showPage();
+        });
+    }
+    
+    // Initial display
+    showPage();
+}
+
+function showPage() {
+    console.log('Showing page', currentPage, 'with', rowsPerPage, 'rows per page');
+    
+    if (totalRows === 0) return;
+    
+    // Calculate start and end indices
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    
+    // Hide all rows first, then show current page rows
+    allTableRows.forEach((row, index) => {
+        if (index >= startIndex && index < endIndex) {
+            row.style.display = '';
+            // Update row number
+            const numberCell = row.querySelector('td:first-child');
+            if (numberCell) {
+                numberCell.textContent = index + 1;
+            }
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    // Update pagination info and controls
     updatePaginationInfo();
     updatePaginationControls();
 }
 
 function updatePaginationInfo() {
-    const totalEntries = allRows.length;
-    const startIndex = (currentPage - 1) * entriesPerPage + 1;
-    const endIndex = Math.min(currentPage * entriesPerPage, totalEntries);
+    const start = (currentPage - 1) * rowsPerPage + 1;
+    const end = Math.min(currentPage * rowsPerPage, totalRows);
     
     const infoElement = document.getElementById('paginationInfo');
-    infoElement.textContent = `Menampilkan ${startIndex} sampai ${endIndex} dari ${totalEntries} entri`;
+    if (infoElement) {
+        infoElement.textContent = `Menampilkan ${start} sampai ${end} dari ${totalRows} entri`;
+    }
 }
 
 function updatePaginationControls() {
-    const totalPages = Math.ceil(allRows.length / entriesPerPage);
+    const totalPages = Math.ceil(totalRows / rowsPerPage);
     const paginationControls = document.getElementById('paginationControls');
+    
+    if (!paginationControls) return;
     
     paginationControls.innerHTML = '';
     
     // Previous button
-    const prevLi = document.createElement('li');
-    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
-    prevLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(${currentPage - 1})">«</a>`;
-    paginationControls.appendChild(prevLi);
+    const prevButton = createPageButton('«', currentPage - 1, currentPage === 1);
+    paginationControls.appendChild(prevButton);
     
-    // Page numbers
-    const startPage = Math.max(1, currentPage - 2);
-    const endPage = Math.min(totalPages, currentPage + 2);
+    // Page numbers (simplified approach)
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
     
+    // Adjust start if we're near the end
+    if (endPage - startPage < maxVisiblePages - 1) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    // Add first page and dots if needed
     if (startPage > 1) {
-        const firstLi = document.createElement('li');
-        firstLi.className = 'page-item';
-        firstLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(1)">1</a>`;
-        paginationControls.appendChild(firstLi);
-        
+        paginationControls.appendChild(createPageButton('1', 1));
         if (startPage > 2) {
-            const dotsLi = document.createElement('li');
-            dotsLi.className = 'page-item disabled';
-            dotsLi.innerHTML = `<span class="page-link">...</span>`;
-            paginationControls.appendChild(dotsLi);
+            const dots = document.createElement('li');
+            dots.className = 'page-item disabled';
+            dots.innerHTML = '<span class="page-link">...</span>';
+            paginationControls.appendChild(dots);
         }
     }
     
+    // Add visible page numbers
     for (let i = startPage; i <= endPage; i++) {
-        const li = document.createElement('li');
-        li.className = `page-item ${i === currentPage ? 'active' : ''}`;
-        li.innerHTML = `<a class="page-link" href="#" onclick="changePage(${i})">${i}</a>`;
-        paginationControls.appendChild(li);
+        const pageButton = createPageButton(i, i, false, i === currentPage);
+        paginationControls.appendChild(pageButton);
     }
     
+    // Add last page and dots if needed
     if (endPage < totalPages) {
         if (endPage < totalPages - 1) {
-            const dotsLi = document.createElement('li');
-            dotsLi.className = 'page-item disabled';
-            dotsLi.innerHTML = `<span class="page-link">...</span>`;
-            paginationControls.appendChild(dotsLi);
+            const dots = document.createElement('li');
+            dots.className = 'page-item disabled';
+            dots.innerHTML = '<span class="page-link">...</span>';
+            paginationControls.appendChild(dots);
         }
-        
-        const lastLi = document.createElement('li');
-        lastLi.className = 'page-item';
-        lastLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(${totalPages})">${totalPages}</a>`;
-        paginationControls.appendChild(lastLi);
+        paginationControls.appendChild(createPageButton(totalPages, totalPages));
     }
     
     // Next button
-    const nextLi = document.createElement('li');
-    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
-    nextLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(${currentPage + 1})">»</a>`;
-    paginationControls.appendChild(nextLi);
+    const nextButton = createPageButton('»', currentPage + 1, currentPage === totalPages);
+    paginationControls.appendChild(nextButton);
 }
 
-function changePage(page) {
-    const totalPages = Math.ceil(allRows.length / entriesPerPage);
-    if (page >= 1 && page <= totalPages) {
-        currentPage = page;
-        displayPage();
+function createPageButton(text, page, disabled = false, active = false) {
+    const li = document.createElement('li');
+    li.className = `page-item ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}`;
+    
+    const link = document.createElement('a');
+    link.className = 'page-link';
+    link.href = '#';
+    link.textContent = text;
+    
+    if (!disabled) {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const totalPages = Math.ceil(totalRows / rowsPerPage);
+            if (page >= 1 && page <= totalPages) {
+                currentPage = page;
+                showPage();
+            }
+        });
     }
-    return false;
+    
+    li.appendChild(link);
+    return li;
 }
 
-// Initialize pagination when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    initializePagination();
-});
-
-// Prepare data for jenis perkara chart
-const jenisPerkaraData = {};
-reportData.forEach(item => {
-    if (jenisPerkaraData[item.JENIS_PERKARA]) {
-        jenisPerkaraData[item.JENIS_PERKARA] += item.TOTAL;
-    } else {
-        jenisPerkaraData[item.JENIS_PERKARA] = item.TOTAL;
+function initChart() {
+    console.log('Initializing chart...');
+    
+    const chartCanvas = document.getElementById('jenisPerkaraChart');
+    if (!chartCanvas) {
+        console.error('Chart canvas not found');
+        return;
     }
-});
-
-const jenisPerkaraLabels = Object.keys(jenisPerkaraData);
-const jenisPerkaraValues = Object.values(jenisPerkaraData);
-
-// Colors for jenis perkara chart
-const colors = [
-    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', 
-    '#FF9F40', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4'
-];
-
-// Jenis Perkara Chart (Bar Chart)
-const jenisPerkaraCtx = document.getElementById('jenisPerkaraChart').getContext('2d');
-new Chart(jenisPerkaraCtx, {
-    type: 'bar',
-    data: {
-        labels: jenisPerkaraLabels,
-        datasets: [{
-            label: 'Jumlah Kasus',
-            data: jenisPerkaraValues,
-            backgroundColor: colors.slice(0, jenisPerkaraLabels.length),
-            borderColor: colors.slice(0, jenisPerkaraLabels.length),
-            borderWidth: 1
-        }]
-    },
-    options: {
-        responsive: true,
-        scales: {
-            y: {
-                beginAtZero: true,
-                ticks: {
-                    stepSize: 1
+    
+    // Predefined jenis perkara list (all must be shown)
+    const jenisPerkaraList = [
+        'Narkoba',
+        'Perkara Anak', 
+        'Kesusilaan',
+        'Judi',
+        'KDRT',
+        'OHARDA',
+        'Perkara Lainnya'
+    ];
+    
+    // Initialize all categories with 0
+    const chartData = {};
+    jenisPerkaraList.forEach(jenis => {
+        chartData[jenis] = 0;
+    });
+    
+    // Process report data and map to categories
+    if (reportData && Array.isArray(reportData)) {
+        reportData.forEach(item => {
+            if (item && item.JENIS_PERKARA && typeof item.TOTAL !== 'undefined') {
+                const jenis = item.JENIS_PERKARA.toUpperCase();
+                let mappedJenis = 'Perkara Lainnya'; // default category
+                
+                // Map to specific categories
+                if (jenis.includes('NARKOBA')) {
+                    mappedJenis = 'Narkoba';
+                } else if (jenis.includes('ANAK')) {
+                    mappedJenis = 'Perkara Anak';
+                } else if (jenis.includes('KESUSILAAN') || jenis.includes('SUSILA')) {
+                    mappedJenis = 'Kesusilaan';
+                } else if (jenis.includes('JUDI')) {
+                    mappedJenis = 'Judi';
+                } else if (jenis.includes('KDRT')) {
+                    mappedJenis = 'KDRT';
+                } else if (jenis.includes('OHARDA')) {
+                    mappedJenis = 'OHARDA';
                 }
+                
+                chartData[mappedJenis] += parseInt(item.TOTAL) || 0;
+            }
+        });
+    }
+    
+    // Prepare chart configuration
+    const labels = jenisPerkaraList;
+    const values = jenisPerkaraList.map(jenis => chartData[jenis]);
+    const colors = [
+        '#FF6384', // Narkoba - Red
+        '#36A2EB', // Perkara Anak - Blue
+        '#FFCE56', // Kesusilaan - Yellow
+        '#4BC0C0', // Judi - Teal
+        '#9966FF', // KDRT - Purple
+        '#FF9F40', // OHARDA - Orange
+        '#96CEB4'  // Perkara Lainnya - Green
+    ];
+    
+    console.log('Chart labels:', labels);
+    console.log('Chart values:', values);
+    
+    // Create the chart
+    try {
+        new Chart(chartCanvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Jumlah Kasus',
+                    data: values,
+                    backgroundColor: colors,
+                    borderColor: colors,
+                    borderWidth: 1
+                }]
             },
-            x: {
-                ticks: {
-                    maxRotation: 45,
-                    minRotation: 0
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Distribusi Kasus per Jenis Perkara (Berdasarkan Filter Aktif)'
+                    },
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `Jumlah Kasus: ${context.parsed.y}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45
+                        }
+                    }
                 }
             }
-        },
-        plugins: {
-            legend: {
-                display: false
-            },
-            title: {
-                display: true,
-                text: 'Histogram Distribusi Kasus per Jenis Perkara'
-            }
-        }
+        });
+        console.log('Chart created successfully');
+    } catch (error) {
+        console.error('Error creating chart:', error);
     }
-});
+}
 </script>
 
 <style>
