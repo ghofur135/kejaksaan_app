@@ -409,45 +409,185 @@ def delete_pidum_item_route(item_id):
 @app.route('/laporan_pidum')
 def laporan_pidum():
     # Get filter parameters
-    bulan = request.args.get('bulan', type=int)
+    # Bulan bisa kosong untuk menampilkan semua bulan
+    bulan_raw = request.args.get('bulan')
+    bulan = int(bulan_raw) if bulan_raw not in (None, '') else None
     tahun = request.args.get('tahun', type=int)
-    
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+
     # Default to current month/year if not specified
     from datetime import datetime
-    if not bulan:
-        bulan = datetime.now().month
+    # Hanya default ke bulan berjalan jika user tidak mengirim parameter 'bulan' sama sekali
+    if 'bulan' not in request.args:
+        if not bulan:
+            bulan = datetime.now().month
     if not tahun:
         tahun = datetime.now().year
-    
-    # Get report data
-    report_data = get_pidum_report_data(bulan, tahun)
-    
+
+    # Query database using filters similar to laporan_pidum_new
+    import sqlite3
+    from collections import defaultdict
+
+    conn = sqlite3.connect('db/kejaksaan.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    where_conditions = []
+    params = []
+
+    if bulan:
+        where_conditions.append("strftime('%m', tanggal) = ?")
+        params.append(f"{bulan:02d}")
+
+    if tahun:
+        where_conditions.append("strftime('%Y', tanggal) = ?")
+        params.append(str(tahun))
+
+    if start_date:
+        where_conditions.append("tanggal >= ?")
+        params.append(start_date)
+
+    if end_date:
+        where_conditions.append("tanggal <= ?")
+        params.append(end_date)
+
+    where_clause = ""
+    if where_conditions:
+        where_clause = "WHERE " + " AND ".join(where_conditions)
+
+    query = f"""
+    SELECT jenis_perkara, tahapan_penanganan
+    FROM pidum_data {where_clause}
+    ORDER BY jenis_perkara
+    """
+
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+
+    # Aggregate per jenis_perkara
+    agg = defaultdict(lambda: {
+        'jenis_perkara': '',
+        'JUMLAH': 0,
+        'PRA PENUNTUTAN': 0,
+        'PENUNTUTAN': 0,
+        'UPAYA HUKUM': 0
+    })
+
+    for row in rows:
+        jenis = (row['jenis_perkara'] or '').strip()
+        tahapan = (row['tahapan_penanganan'] or '').upper()
+        if not jenis:
+            jenis = 'Tidak Diketahui'
+        agg[jenis]['jenis_perkara'] = jenis
+        if 'PRA PENUNTUTAN' in tahapan:
+            agg[jenis]['PRA PENUNTUTAN'] += 1
+        elif 'PENUNTUTAN' in tahapan:
+            agg[jenis]['PENUNTUTAN'] += 1
+        elif 'UPAYA HUKUM' in tahapan:
+            agg[jenis]['UPAYA HUKUM'] += 1
+        else:
+            agg[jenis]['PRA PENUNTUTAN'] += 1
+        agg[jenis]['JUMLAH'] = (
+            agg[jenis]['PRA PENUNTUTAN'] + agg[jenis]['PENUNTUTAN'] + agg[jenis]['UPAYA HUKUM']
+        )
+
+    # Ensure all predefined categories exist (including zeros)
+    predefined_categories = [
+        'Narkoba',
+        'Perkara Anak',
+        'Kesusilaan',
+        'Judi',
+        'KDRT',
+        'OHARDA',
+        'Perkara Lainnya'
+    ]
+
+    # Normalize keys to predefined mapping
+    def map_to_predefined(name: str) -> str:
+        upper = (name or '').upper()
+        if 'NARKOBA' in upper:
+            return 'Narkoba'
+        if 'ANAK' in upper:
+            return 'Perkara Anak'
+        if 'KESUSILAAN' in upper or 'SUSILA' in upper:
+            return 'Kesusilaan'
+        if 'JUDI' in upper:
+            return 'Judi'
+        if 'KDRT' in upper:
+            return 'KDRT'
+        if 'OHARDA' in upper:
+            return 'OHARDA'
+        return 'Perkara Lainnya'
+
+    # Re-map aggregated keys into predefined buckets
+    remapped = defaultdict(lambda: {
+        'jenis_perkara': '',
+        'JUMLAH': 0,
+        'PRA PENUNTUTAN': 0,
+        'PENUNTUTAN': 0,
+        'UPAYA HUKUM': 0
+    })
+
+    for jenis, data in agg.items():
+        bucket = map_to_predefined(jenis)
+        remapped[bucket]['jenis_perkara'] = bucket
+        remapped[bucket]['PRA PENUNTUTAN'] += data['PRA PENUNTUTAN']
+        remapped[bucket]['PENUNTUTAN'] += data['PENUNTUTAN']
+        remapped[bucket]['UPAYA HUKUM'] += data['UPAYA HUKUM']
+        remapped[bucket]['JUMLAH'] = (
+            remapped[bucket]['PRA PENUNTUTAN'] + remapped[bucket]['PENUNTUTAN'] + remapped[bucket]['UPAYA HUKUM']
+        )
+
+    # Add missing predefined categories with zeros
+    for cat in predefined_categories:
+        if cat not in remapped:
+            remapped[cat] = {
+                'jenis_perkara': cat,
+                'JUMLAH': 0,
+                'PRA PENUNTUTAN': 0,
+                'PENUNTUTAN': 0,
+                'UPAYA HUKUM': 0
+            }
+
+    # Convert to list with sequential NO, ordered by predefined list
+    report_data = []
+    idx = 1
+    for cat in predefined_categories:
+        data = remapped.get(cat)
+        if data:
+            item = {'NO': idx}
+            item.update(data)
+            report_data.append(item)
+            idx += 1
+
     # Calculate totals
     total_pra_penuntutan = sum(item['PRA PENUNTUTAN'] for item in report_data)
     total_penuntutan = sum(item['PENUNTUTAN'] for item in report_data)
     total_upaya_hukum = sum(item['UPAYA HUKUM'] for item in report_data)
     total_keseluruhan = sum(item['JUMLAH'] for item in report_data)
-    
-    # Generate chart data
-    chart_data = generate_pidum_chart(report_data)
-    
+
     # Month names for display
     month_names = {
         1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
         5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
         9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
     }
-    
-    return render_template('laporan_pidum.html', 
-                         report_data=report_data,
-                         bulan=bulan, 
-                         tahun=tahun,
-                         bulan_nama=month_names.get(bulan, 'Tidak diketahui'),
-                         total_pra_penuntutan=total_pra_penuntutan,
-                         total_penuntutan=total_penuntutan,
-                         total_upaya_hukum=total_upaya_hukum,
-                         total_keseluruhan=total_keseluruhan,
-                         chart_data=chart_data)
+
+    return render_template(
+        'laporan_pidum.html',
+        report_data=report_data,
+        bulan=bulan,
+        tahun=tahun,
+        start_date=start_date,
+        end_date=end_date,
+        bulan_nama=(month_names.get(bulan) if bulan else 'Semua Bulan'),
+        total_pra_penuntutan=total_pra_penuntutan,
+        total_penuntutan=total_penuntutan,
+        total_upaya_hukum=total_upaya_hukum,
+        total_keseluruhan=total_keseluruhan
+    )
 
 @app.route('/laporan_pidum_new')
 def laporan_pidum_new():

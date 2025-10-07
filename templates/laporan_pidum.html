@@ -8,49 +8,45 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h4><i class="fas fa-chart-bar"></i> Laporan PIDUM - {{ bulan_nama }} {{ tahun }}</h4>
-                <div class="btn-group">
-                    <button type="button" class="btn btn-outline-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
-                        <i class="fas fa-filter"></i> Filter Periode
-                    </button>
-                    <div class="dropdown-menu p-3" style="min-width: 300px;">
-                        <form method="GET" action="{{ url_for('laporan_pidum') }}">
-                            <div class="row">
-                                <div class="col-6">
-                                    <label class="form-label">Bulan</label>
-                                    <select name="bulan" class="form-select form-select-sm">
-                                        <option value="1" {{ 'selected' if bulan == 1 else '' }}>Januari</option>
-                                        <option value="2" {{ 'selected' if bulan == 2 else '' }}>Februari</option>
-                                        <option value="3" {{ 'selected' if bulan == 3 else '' }}>Maret</option>
-                                        <option value="4" {{ 'selected' if bulan == 4 else '' }}>April</option>
-                                        <option value="5" {{ 'selected' if bulan == 5 else '' }}>Mei</option>
-                                        <option value="6" {{ 'selected' if bulan == 6 else '' }}>Juni</option>
-                                        <option value="7" {{ 'selected' if bulan == 7 else '' }}>Juli</option>
-                                        <option value="8" {{ 'selected' if bulan == 8 else '' }}>Agustus</option>
-                                        <option value="9" {{ 'selected' if bulan == 9 else '' }}>September</option>
-                                        <option value="10" {{ 'selected' if bulan == 10 else '' }}>Oktober</option>
-                                        <option value="11" {{ 'selected' if bulan == 11 else '' }}>November</option>
-                                        <option value="12" {{ 'selected' if bulan == 12 else '' }}>Desember</option>
-                                    </select>
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label">Tahun</label>
-                                    <select name="tahun" class="form-select form-select-sm">
-                                        {% for year in range(2020, 2031) %}
-                                        <option value="{{ year }}" {{ 'selected' if tahun == year else '' }}>{{ year }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
+            </div>
+            <div class="card-body">
+                <!-- Filter Section -->
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <form method="GET" action="{{ url_for('laporan_pidum') }}" class="row g-2 align-items-end">
+                            <div class="col-md-3">
+                                <label class="form-label">Bulan</label>
+                                <select name="bulan" class="form-select form-select-sm">
+                                    <option value="" {% if not bulan %}selected{% endif %}>Semua Bulan</option>
+                                    {% for i in range(1,13) %}
+                                    <option value="{{ i }}" {% if bulan == i %}selected{% endif %}>
+                                        {{ ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][i] }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
                             </div>
-                            <div class="mt-2">
-                                <button type="submit" class="btn btn-primary btn-sm">
-                                    <i class="fas fa-search"></i> Tampilkan
-                                </button>
+                            <div class="col-md-2">
+                                <label class="form-label">Tahun</label>
+                                <select name="tahun" class="form-select form-select-sm">
+                                    {% for year in range(2020, 2031) %}
+                                    <option value="{{ year }}" {% if tahun == year %}selected{% endif %}>{{ year }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Dari Tanggal</label>
+                                <input type="date" name="start_date" class="form-control form-control-sm" value="{{ start_date or '' }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Sampai Tanggal</label>
+                                <input type="date" name="end_date" class="form-control form-control-sm" value="{{ end_date or '' }}">
+                            </div>
+                            <div class="col-md-1 d-grid">
+                                <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i> Tampilkan</button>
                             </div>
                         </form>
                     </div>
                 </div>
-            </div>
-            <div class="card-body">
                 <!-- Table Report -->
                 <div class="table-responsive">
                     <table class="table table-bordered table-striped">
@@ -95,8 +91,10 @@
                 <!-- Chart Section -->
                 <div class="mt-4">
                     <h5><i class="fas fa-chart-bar"></i> Grafik PIDUM</h5>
-                    <div class="text-center">
-                        <img src="data:image/png;base64,{{ chart_data }}" alt="Grafik PIDUM" class="img-fluid" style="max-width: 100%; height: auto;">
+                    <div class="card">
+                        <div class="card-body">
+                            <canvas id="pidumChart"></canvas>
+                        </div>
                     </div>
                 </div>
 
@@ -109,7 +107,7 @@
                         <a href="{{ url_for('export_pidum_excel') }}?bulan={{ bulan }}&tahun={{ tahun }}" class="btn btn-success">
                             <i class="fas fa-file-excel"></i> Export Excel
                         </a>
-                        <button onclick="window.print()" class="btn btn-primary">
+                        <button onclick="printReport()" class="btn btn-primary">
                             <i class="fas fa-print"></i> Print Laporan
                         </button>
                     </div>
@@ -119,6 +117,136 @@
     </div>
 </div>
 
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tableRows = Array.from(document.querySelectorAll('table tbody tr'));
+    // Ambil data dari tabel agar sinkron dengan tampilan
+    const labels = [];
+    const values = [];
+    tableRows.forEach(row => {
+        const cols = row.querySelectorAll('td');
+        if (!cols || cols.length < 7) return;
+        const jenisPerkara = cols[2].textContent.trim();
+        const jumlah = parseInt(cols[3].textContent.trim(), 10);
+        if (jenisPerkara && !isNaN(jumlah)) {
+            labels.push(jenisPerkara);
+            values.push(jumlah);
+        }
+    });
+
+    const ctx = document.getElementById('pidumChart').getContext('2d');
+
+    // Plugin label nilai
+    const valueLabelPlugin = {
+        id: 'valueLabelPlugin',
+        afterDatasetsDraw(chart, args, pluginOptions) {
+            const { ctx } = chart;
+            const dataset = chart.data && chart.data.datasets ? chart.data.datasets[0] : null;
+            if (!dataset) return;
+            const meta = chart.getDatasetMeta(0);
+            ctx.save();
+            ctx.fillStyle = (pluginOptions && pluginOptions.color) ? pluginOptions.color : '#000';
+            ctx.font = (pluginOptions && pluginOptions.font) || '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            meta.data.forEach((bar, index) => {
+                const value = dataset.data[index];
+                if (value === null || typeof value === 'undefined') return;
+                const x = bar.x;
+                const y = bar.y - 4;
+                ctx.fillText(String(value), x, y);
+            });
+            ctx.restore();
+        }
+    };
+
+    window.classicPidumChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Jumlah Kasus',
+                data: values,
+                backgroundColor: '#36A2EB',
+                borderColor: '#36A2EB',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) { return `Jumlah Kasus: ${context.parsed.y}`; }
+                    }
+                },
+                valueLabelPlugin: { color: '#000', font: '12px Arial' }
+            },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1 } },
+                x: { ticks: { maxRotation: 45 } }
+            }
+        },
+        plugins: [valueLabelPlugin]
+    });
+});
+
+function printReport() {
+    if (window.classicPidumChart) {
+        try { window.classicPidumChart.options.animation = false; window.classicPidumChart.update(); } catch (e) {}
+    }
+    const canvas = document.getElementById('pidumChart');
+    const chartImage = canvas ? canvas.toDataURL('image/png') : null;
+
+    const tableEl = document.querySelector('table');
+    const printContent = `
+        <html>
+        <head>
+            <title>Laporan PIDUM</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                .header { text-align: center; margin-bottom: 20px; }
+                .info { margin-bottom: 20px; padding: 10px; background: #f5f5f5; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
+                th { background-color: #f2f2f2; font-weight: bold; }
+                .chart { text-align: center; margin: 20px 0; }
+                .chart img { max-width: 100%; height: auto; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h2>LAPORAN PIDUM - {{ bulan_nama }} {{ tahun }}</h2>
+                <p>KEJAKSAAN NEGERI</p>
+            </div>
+            <div class="info">
+                <strong>Filter:</strong>
+                Bulan: {{ bulan_nama }}, Tahun: {{ tahun }}
+                {% if start_date or end_date %}
+                 | Periode: {{ start_date or '-' }} s/d {{ end_date or '-' }}
+                {% endif %}
+                <br><strong>Total Data:</strong> {{ total_keseluruhan }} record
+                <br><strong>Dicetak pada:</strong> ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </div>
+            <div class="chart">
+                <h3>Grafik Distribusi Jenis Perkara</h3>
+                ${chartImage ? `<img src="${chartImage}" alt="Chart PIDUM" />` : '<p>Grafik tidak tersedia</p>'}
+            </div>
+            ${tableEl ? tableEl.outerHTML : ''}
+        </body>
+        </html>
+    `;
+
+    const w = window.open('', '_blank');
+    w.document.write(printContent);
+    w.document.close();
+    setTimeout(() => { w.print(); }, 800);
+}
+</script>
+{% endblock %}
 <style>
 @media print {
     .btn, .dropdown, .card-header .btn-group {

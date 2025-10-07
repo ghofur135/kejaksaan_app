@@ -492,6 +492,30 @@ function initChart() {
     
     // Create the chart
     try {
+        // Plugin untuk menampilkan label angka di atas setiap bar
+        const valueLabelPlugin = {
+            id: 'valueLabelPlugin',
+            afterDatasetsDraw(chart, args, pluginOptions) {
+                const {ctx, data, chartArea} = chart;
+                const dataset = chart.data.datasets[0];
+                if (!dataset) return;
+                ctx.save();
+                ctx.fillStyle = pluginOptions && pluginOptions.color ? pluginOptions.color : '#000';
+                ctx.font = (pluginOptions && pluginOptions.font) || '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                const meta = chart.getDatasetMeta(0);
+                meta.data.forEach((bar, index) => {
+                    const value = dataset.data[index];
+                    if (value === null || typeof value === 'undefined') return;
+                    const x = bar.x;
+                    const y = bar.y - 4; // sedikit di atas bar
+                    ctx.fillText(String(value), x, y);
+                });
+                ctx.restore();
+            }
+        };
+
         window.chartInstance = new Chart(chartCanvas.getContext('2d'), {
             type: 'bar',
             data: {
@@ -520,6 +544,11 @@ function initChart() {
                                 return `Jumlah Kasus: ${context.parsed.y}`;
                             }
                         }
+                    },
+                    // Opsi plugin label
+                    valueLabelPlugin: {
+                        color: '#000',
+                        font: '12px Arial'
                     }
                 },
                 scales: {
@@ -535,7 +564,8 @@ function initChart() {
                         }
                     }
                 }
-            }
+            },
+            plugins: [valueLabelPlugin]
         });
         console.log('Chart created successfully');
     } catch (error) {

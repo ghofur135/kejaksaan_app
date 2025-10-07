@@ -237,6 +237,33 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+// Simpan instance chart untuk kebutuhan print/update
+window.chartInstances = {};
+
+// Plugin untuk menampilkan label angka di atas setiap bar
+const valueLabelPlugin = {
+	id: 'valueLabelPlugin',
+	afterDatasetsDraw(chart, args, pluginOptions) {
+		const { ctx } = chart;
+		const dataset = chart.data && chart.data.datasets ? chart.data.datasets[0] : null;
+		if (!dataset) return;
+		const meta = chart.getDatasetMeta(0);
+		ctx.save();
+		ctx.fillStyle = (pluginOptions && pluginOptions.color) ? pluginOptions.color : '#000';
+		ctx.font = (pluginOptions && pluginOptions.font) || '12px Arial';
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'bottom';
+		meta.data.forEach((bar, index) => {
+			const value = dataset.data[index];
+			if (value === null || typeof value === 'undefined') return;
+			const x = bar.x;
+			const y = bar.y - 4; // posisi sedikit di atas bar
+			ctx.fillText(String(value), x, y);
+		});
+		ctx.restore();
+	}
+};
+
 document.addEventListener('DOMContentLoaded', function() {
     // Data dari backend
     const chartData = {{ chart_data | tojson | safe }};
@@ -273,7 +300,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         const backgroundColors = allJenisPerkara.map(jenis => colors[jenis]);
         
-        new Chart(ctx, {
+        const chart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: allJenisPerkara,
@@ -301,6 +328,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     legend: {
                         display: false
+                    },
+                    // konfigurasi plugin label
+                    valueLabelPlugin: {
+                        color: '#000',
+                        font: '12px Arial'
                     }
                 },
                 scales: {
@@ -333,8 +365,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     duration: 800,
                     easing: 'easeInOutQuart'
                 }
-            }
+            },
+            plugins: [valueLabelPlugin]
         });
+
+        // Simpan instance untuk kebutuhan print/update
+        window.chartInstances[canvasId] = chart;
     }
     
     // Debug: Log chart data
@@ -356,6 +392,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Function untuk print laporan bulanan dengan grafik
 function printReport() {
+    // Pastikan chart selesai di-render dan nonaktifkan animasi sebelum snapshot
+    if (window.chartInstances) {
+        Object.values(window.chartInstances).forEach(instance => {
+            try {
+                instance.options.animation = false;
+                instance.update();
+            } catch (e) {}
+        });
+    }
+
     // Convert charts to images
     const charts = ['praPenuntutanChart', 'penuntutanChart', 'upayaHukumChart'];
     const chartImages = {};
