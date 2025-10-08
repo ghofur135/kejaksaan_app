@@ -186,7 +186,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 valueLabelPlugin: { color: '#000', font: '12px Arial' }
             },
             scales: {
-                y: { beginAtZero: true, ticks: { stepSize: 1 } },
+                y: { 
+                    beginAtZero: true, 
+                    max: Math.max(...values) + 10,
+                    ticks: { stepSize: 1 } 
+                },
                 x: { ticks: { maxRotation: 45 } }
             }
         },

@@ -554,6 +554,7 @@ function initChart() {
                 scales: {
                     y: {
                         beginAtZero: true,
+                        max: Math.max(...values) + 10,
                         ticks: {
                             stepSize: 1
                         }
