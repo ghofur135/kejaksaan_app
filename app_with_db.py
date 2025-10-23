@@ -457,7 +457,21 @@ def laporan_pidum():
         where_clause = "WHERE " + " AND ".join(where_conditions)
 
     query = f"""
-    SELECT jenis_perkara, tahapan_penanganan
+    SELECT jenis_perkara, tahapan_penanganan,
+           CASE strftime('%m', tanggal)
+               WHEN '01' THEN 'Januari'
+               WHEN '02' THEN 'Februari'
+               WHEN '03' THEN 'Maret'
+               WHEN '04' THEN 'April'
+               WHEN '05' THEN 'Mei'
+               WHEN '06' THEN 'Juni'
+               WHEN '07' THEN 'Juli'
+               WHEN '08' THEN 'Agustus'
+               WHEN '09' THEN 'September'
+               WHEN '10' THEN 'Oktober'
+               WHEN '11' THEN 'November'
+               WHEN '12' THEN 'Desember'
+           END as bulan_nama
     FROM pidum_data {where_clause}
     ORDER BY jenis_perkara
     """
@@ -469,6 +483,7 @@ def laporan_pidum():
     # Aggregate per jenis_perkara
     agg = defaultdict(lambda: {
         'jenis_perkara': '',
+        'BULAN': '',
         'JUMLAH': 0,
         'PRA PENUNTUTAN': 0,
         'PENUNTUTAN': 0,
@@ -478,19 +493,28 @@ def laporan_pidum():
     for row in rows:
         jenis = (row['jenis_perkara'] or '').strip()
         tahapan = (row['tahapan_penanganan'] or '').upper()
+        bulan_nama_row = row['bulan_nama']
+
         if not jenis:
             jenis = 'Tidak Diketahui'
-        agg[jenis]['jenis_perkara'] = jenis
+        
+        # Group by both month and jenis_perkara
+        agg_key = (bulan_nama_row, jenis)
+
+        agg[agg_key]['jenis_perkara'] = jenis
+        agg[agg_key]['BULAN'] = bulan_nama_row
+
         if 'PRA PENUNTUTAN' in tahapan:
-            agg[jenis]['PRA PENUNTUTAN'] += 1
+            agg[agg_key]['PRA PENUNTUTAN'] += 1
         elif 'PENUNTUTAN' in tahapan:
-            agg[jenis]['PENUNTUTAN'] += 1
+            agg[agg_key]['PENUNTUTAN'] += 1
         elif 'UPAYA HUKUM' in tahapan:
-            agg[jenis]['UPAYA HUKUM'] += 1
+            agg[agg_key]['UPAYA HUKUM'] += 1
         else:
-            agg[jenis]['PRA PENUNTUTAN'] += 1
-        agg[jenis]['JUMLAH'] = (
-            agg[jenis]['PRA PENUNTUTAN'] + agg[jenis]['PENUNTUTAN'] + agg[jenis]['UPAYA HUKUM']
+            agg[agg_key]['PRA PENUNTUTAN'] += 1
+        
+        agg[agg_key]['JUMLAH'] = (
+            agg[agg_key]['PRA PENUNTUTAN'] + agg[agg_key]['PENUNTUTAN'] + agg[agg_key]['UPAYA HUKUM']
         )
 
     # Ensure all predefined categories exist (including zeros)
@@ -524,56 +548,51 @@ def laporan_pidum():
     # Re-map aggregated keys into predefined buckets
     remapped = defaultdict(lambda: {
         'jenis_perkara': '',
+        'BULAN': '',
         'JUMLAH': 0,
         'PRA PENUNTUTAN': 0,
         'PENUNTUTAN': 0,
         'UPAYA HUKUM': 0
     })
 
-    for jenis, data in agg.items():
+    for (bulan_nama_row, jenis), data in agg.items():
         bucket = map_to_predefined(jenis)
-        remapped[bucket]['jenis_perkara'] = bucket
-        remapped[bucket]['PRA PENUNTUTAN'] += data['PRA PENUNTUTAN']
-        remapped[bucket]['PENUNTUTAN'] += data['PENUNTUTAN']
-        remapped[bucket]['UPAYA HUKUM'] += data['UPAYA HUKUM']
-        remapped[bucket]['JUMLAH'] = (
-            remapped[bucket]['PRA PENUNTUTAN'] + remapped[bucket]['PENUNTUTAN'] + remapped[bucket]['UPAYA HUKUM']
-        )
+        new_key = (bulan_nama_row, bucket)
 
-    # Add missing predefined categories with zeros
-    for cat in predefined_categories:
-        if cat not in remapped:
-            remapped[cat] = {
-                'jenis_perkara': cat,
-                'JUMLAH': 0,
-                'PRA PENUNTUTAN': 0,
-                'PENUNTUTAN': 0,
-                'UPAYA HUKUM': 0
-            }
+        remapped[new_key]['BULAN'] = bulan_nama_row
+        remapped[new_key]['jenis_perkara'] = bucket
+        remapped[new_key]['PRA PENUNTUTAN'] += data['PRA PENUNTUTAN']
+        remapped[new_key]['PENUNTUTAN'] += data['PENUNTUTAN']
+        remapped[new_key]['UPAYA HUKUM'] += data['UPAYA HUKUM']
+        remapped[new_key]['JUMLAH'] += data['JUMLAH']
 
     # Convert to list with sequential NO, ordered by predefined list
-    report_data = []
-    idx = 1
-    for cat in predefined_categories:
-        data = remapped.get(cat)
-        if data:
-            item = {'NO': idx}
-            item.update(data)
-            report_data.append(item)
-            idx += 1
+    report_data = list(remapped.values())
+
+    month_names = {
+        1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
+        5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
+        9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
+    }
+    month_map = {name: num for num, name in month_names.items()}
+    
+    # Sort data
+    # If a specific month is selected, sort by category only
+    if bulan:
+        report_data.sort(key=lambda x: predefined_categories.index(x['jenis_perkara']) if x['jenis_perkara'] in predefined_categories else -1)
+    else:
+        # Sort by month, then by category
+        report_data.sort(key=lambda x: (month_map.get(x['BULAN'], 0), predefined_categories.index(x['jenis_perkara']) if x['jenis_perkara'] in predefined_categories else -1))
+
+    # Add sequential NO
+    for i, item in enumerate(report_data):
+        item['NO'] = i + 1
 
     # Calculate totals
     total_pra_penuntutan = sum(item['PRA PENUNTUTAN'] for item in report_data)
     total_penuntutan = sum(item['PENUNTUTAN'] for item in report_data)
     total_upaya_hukum = sum(item['UPAYA HUKUM'] for item in report_data)
     total_keseluruhan = sum(item['JUMLAH'] for item in report_data)
-
-    # Month names for display
-    month_names = {
-        1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
-        5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
-        9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
-    }
 
     return render_template(
         'laporan_pidum.html',
