@@ -227,7 +227,7 @@ def laporan_pidum_bulanan():
     conn.close()
     
     # Define all categories that should always appear
-    predefined_categories = ['Narkoba', 'Perkara Anak', 'Kesusilaan', 'Judi', 'KDRT', 'OHARDA', 'Perkara Lainnya']
+    predefined_categories = ['NARKOBA', 'PERKARA ANAK', 'KESUSILAAN', 'JUDI', 'KDRT', 'OHARDA', 'PERKARA LAINNYA']
     
     # Get all months that should be displayed
     month_names = {
@@ -282,22 +282,22 @@ def laporan_pidum_bulanan():
     # Normalisasi mapping untuk jenis perkara
     def normalize_jenis_perkara(jenis_text):
         if not jenis_text:
-            return 'Perkara Lainnya'
+            return 'PERKARA LAINNYA'
         jenis_upper = jenis_text.upper().strip()
         if 'NARKOT' in jenis_upper or 'NARKOBA' in jenis_upper:
-            return 'Narkoba'
+            return 'NARKOBA'
         elif 'ANAK' in jenis_upper:
-            return 'Perkara Anak'
+            return 'PERKARA ANAK'
         elif 'SUSILA' in jenis_upper or 'KESUSILAAN' in jenis_upper:
-            return 'Kesusilaan'
+            return 'KESUSILAAN'
         elif 'JUDI' in jenis_upper:
-            return 'Judi'
+            return 'JUDI'
         elif 'KDRT' in jenis_upper or 'KEKERASAN DALAM RUMAH' in jenis_upper:
             return 'KDRT'
         elif 'OHARDA' in jenis_upper or 'HARDA' in jenis_upper:
             return 'OHARDA'
         else:
-            return 'Perkara Lainnya'
+            return 'PERKARA LAINNYA'
     
     for row in rows:
         key = (row['bulan_nama'], row['jenis_perkara'])
@@ -616,31 +616,31 @@ def laporan_pidum():
 
     # Ensure all predefined categories exist (including zeros)
     predefined_categories = [
-        'Narkoba',
-        'Perkara Anak',
-        'Kesusilaan',
-        'Judi',
+        'NARKOBA',
+        'PERKARA ANAK',
+        'KESUSILAAN',
+        'JUDI',
         'KDRT',
         'OHARDA',
-        'Perkara Lainnya'
+        'PERKARA LAINNYA'
     ]
 
     # Normalize keys to predefined mapping
     def map_to_predefined(name: str) -> str:
         upper = (name or '').upper()
         if 'NARKOBA' in upper:
-            return 'Narkoba'
+            return 'NARKOBA'
         if 'ANAK' in upper:
-            return 'Perkara Anak'
+            return 'PERKARA ANAK'
         if 'KESUSILAAN' in upper or 'SUSILA' in upper:
-            return 'Kesusilaan'
+            return 'KESUSILAAN'
         if 'JUDI' in upper:
-            return 'Judi'
+            return 'JUDI'
         if 'KDRT' in upper:
             return 'KDRT'
         if 'OHARDA' in upper:
             return 'OHARDA'
-        return 'Perkara Lainnya'
+        return 'PERKARA LAINNYA'
 
     # Re-map aggregated keys into predefined buckets
     remapped = defaultdict(lambda: {
@@ -1140,27 +1140,27 @@ def export_pidum_new_word():
     
     # Process data for chart
     chart_data = defaultdict(int)
-    all_jenis_perkara = ['Narkoba', 'Perkara Anak', 'Kesusilaan', 'Judi', 'KDRT', 'OHARDA', 'Perkara Lainnya']
+    all_jenis_perkara = ['NARKOBA', 'PERKARA ANAK', 'KESUSILAAN', 'JUDI', 'KDRT', 'OHARDA', 'PERKARA LAINNYA']
     
     # Normalisasi jenis perkara
     def normalize_jenis_perkara(jenis_text):
         if not jenis_text:
-            return 'Perkara Lainnya'
+            return 'PERKARA LAINNYA'
         jenis_upper = jenis_text.upper().strip()
         if 'NARKOT' in jenis_upper or 'NARKOBA' in jenis_upper:
-            return 'Narkoba'
+            return 'NARKOBA'
         elif 'ANAK' in jenis_upper:
-            return 'Perkara Anak'
+            return 'PERKARA ANAK'
         elif 'SUSILA' in jenis_upper or 'KESUSILAAN' in jenis_upper:
-            return 'Kesusilaan'
+            return 'KESUSILAAN'
         elif 'JUDI' in jenis_upper:
-            return 'Judi'
+            return 'JUDI'
         elif 'KDRT' in jenis_upper or 'KEKERASAN DALAM RUMAH' in jenis_upper:
             return 'KDRT'
         elif 'OHARDA' in jenis_upper or 'HARDA' in jenis_upper:
             return 'OHARDA'
         else:
-            return 'Perkara Lainnya'
+            return 'PERKARA LAINNYA'
     
     # Count data for chart
     for row in rows:
