@@ -612,14 +612,45 @@ def laporan_pidum():
         remapped[new_key]['UPAYA HUKUM'] += data['UPAYA HUKUM']
         remapped[new_key]['JUMLAH'] += data['JUMLAH']
 
+    # Ensure all predefined categories are present for each month
+    # Get all months present in the data
+    all_months = set()
+    for key in remapped.keys():
+        all_months.add(key[0])  # key[0] is the month name
+    
+    # If no specific month is selected, use all months
+    if not bulan:
+        month_names = {
+            1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
+            5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
+            9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
+        }
+        all_months = {month_names.get(bulan, 'Januari') for bulan in range(1, 13)}
+    else:
+        month_names = {
+            1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
+            5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
+            9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
+        }
+        all_months = {month_names.get(bulan, 'Januari')}
+    
+    # Add missing categories with zero values for each month
+    for month in all_months:
+        for category in predefined_categories:
+            key = (month, category)
+            if key not in remapped:
+                remapped[key] = {
+                    'BULAN': month,
+                    'jenis_perkara': category,
+                    'JUMLAH': 0,
+                    'PRA PENUNTUTAN': 0,
+                    'PENUNTUTAN': 0,
+                    'UPAYA HUKUM': 0
+                }
+
     # Convert to list with sequential NO, ordered by predefined list
     report_data = list(remapped.values())
 
-    month_names = {
-        1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
-        5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
-        9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
-    }
     month_map = {name: num for num, name in month_names.items()}
     
     # Sort data

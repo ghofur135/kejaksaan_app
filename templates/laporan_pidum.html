@@ -121,19 +121,30 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Define all categories that should always appear in the chart
+    const allCategories = ['Narkoba', 'Perkara Anak', 'Kesusilaan', 'Judi', 'KDRT', 'OHARDA', 'Perkara Lainnya'];
+    
     const tableRows = Array.from(document.querySelectorAll('table tbody tr'));
     // Ambil data dari tabel agar sinkron dengan tampilan
     const labels = [];
     const values = [];
+    
+    // Create a map of existing data from the table
+    const dataMap = {};
     tableRows.forEach(row => {
         const cols = row.querySelectorAll('td');
         if (!cols || cols.length < 7) return;
         const jenisPerkara = cols[2].textContent.trim();
         const jumlah = parseInt(cols[3].textContent.trim(), 10);
         if (jenisPerkara && !isNaN(jumlah)) {
-            labels.push(jenisPerkara);
-            values.push(jumlah);
+            dataMap[jenisPerkara] = jumlah;
         }
+    });
+    
+    // Ensure all categories are included in the chart, even with zero values
+    allCategories.forEach(category => {
+        labels.push(category);
+        values.push(dataMap[category] || 0);
     });
 
     const ctx = document.getElementById('pidumChart').getContext('2d');
@@ -186,10 +197,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 valueLabelPlugin: { color: '#000', font: '12px Arial' }
             },
             scales: {
-                y: { 
-                    beginAtZero: true, 
-                    max: Math.max(...values) + 10,
-                    ticks: { stepSize: 1 } 
+                y: {
+                    beginAtZero: true,
+                    max: Math.max(...values, 1) + 1,
+                    ticks: { stepSize: 1 }
                 },
                 x: { ticks: { maxRotation: 45 } }
             }
