@@ -216,7 +216,7 @@ def laporan_pidum_bulanan():
                WHEN '11' THEN 'November'
                WHEN '12' THEN 'Desember'
            END as bulan_nama
-    FROM pidum_data 
+    FROM pidum_data
     WHERE strftime('%Y', tanggal) = ?
     ORDER BY bulan_num
     """
@@ -225,6 +225,28 @@ def laporan_pidum_bulanan():
     available_months = cursor.fetchall()
     
     conn.close()
+    
+    # Define all categories that should always appear
+    predefined_categories = ['Narkoba', 'Perkara Anak', 'Kesusilaan', 'Judi', 'KDRT', 'OHARDA', 'Perkara Lainnya']
+    
+    # Get all months that should be displayed
+    month_names = {
+        1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
+        5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
+        9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
+    }
+    
+    # Determine which months to display
+    if bulan:
+        display_months = [month_names.get(bulan, 'Januari')]
+    else:
+        # Show all months that have data or all 12 months if no specific month is selected
+        months_with_data = set()
+        for month in available_months:
+            months_with_data.add(month['bulan_nama'])
+        
+        # If no specific month is selected, show all months that have data
+        display_months = list(months_with_data) if months_with_data else list(month_names.values())
     
     # Process data for report
     data_summary = defaultdict(lambda: {
@@ -297,12 +319,41 @@ def laporan_pidum_bulanan():
         # Update chart data dengan normalisasi
         chart_data[tahapan_normalized][jenis_normalized] += 1
         
-        data_summary[key]['JUMLAH'] = (data_summary[key]['PRA_PENUNTUTAN'] + 
-                                     data_summary[key]['PENUNTUTAN'] + 
+        data_summary[key]['JUMLAH'] = (data_summary[key]['PRA_PENUNTUTAN'] +
+                                     data_summary[key]['PENUNTUTAN'] +
                                      data_summary[key]['UPAYA_HUKUM'])
     
-    # Convert to list
+    # Ensure all predefined categories are present for each month
+    for month in display_months:
+        for category in predefined_categories:
+            key = (month, category)
+            if key not in data_summary:
+                data_summary[key] = {
+                    'BULAN': month,
+                    'JENIS_PERKARA': category,
+                    'JUMLAH': 0,
+                    'PRA_PENUNTUTAN': 0,
+                    'PENUNTUTAN': 0,
+                    'UPAYA_HUKUM': 0
+                }
+    
+    # Ensure all categories are present in chart data
+    for category in predefined_categories:
+        if category not in chart_data['pra_penuntutan']:
+            chart_data['pra_penuntutan'][category] = 0
+        if category not in chart_data['penuntutan']:
+            chart_data['penuntutan'][category] = 0
+        if category not in chart_data['upaya_hukum']:
+            chart_data['upaya_hukum'][category] = 0
+    
+    # Convert to list and sort
     report_data = list(data_summary.values())
+    
+    # Sort by month order, then by category order
+    month_order = {name: i for i, name in enumerate(month_names.values())}
+    category_order = {cat: i for i, cat in enumerate(predefined_categories)}
+    
+    report_data.sort(key=lambda x: (month_order.get(x['BULAN'], 0), category_order.get(x['JENIS_PERKARA'], 0)))
     
     # Calculate totals
     total_keseluruhan = sum(item['JUMLAH'] for item in report_data)

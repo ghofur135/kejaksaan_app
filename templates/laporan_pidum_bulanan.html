@@ -350,7 +350,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     y: {
                         beginAtZero: true,
-                        max: Math.max(...data) + 10,
+                        max: Math.max(...data, 1) + 1,
                         ticks: {
                             stepSize: 1,
                             callback: function(value) {
