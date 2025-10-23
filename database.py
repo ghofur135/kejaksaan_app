@@ -1,6 +1,7 @@
 import sqlite3
 import os
 from contextlib import contextmanager
+import hashlib
 
 DATABASE_PATH = os.path.join(os.path.dirname(__file__), 'db', 'kejaksaan.db')
 
@@ -39,6 +40,24 @@ def init_database():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        
+        # Create users table for authentication
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Insert default admin user if not exists
+        cursor.execute('SELECT COUNT(*) FROM users WHERE username = ?', ('admin',))
+        if cursor.fetchone()[0] == 0:
+            # Hash the default password
+            hashed_password = hashlib.sha256('P@ssw0rd25#!'.encode()).hexdigest()
+            cursor.execute('INSERT INTO users (username, password) VALUES (?, ?)',
+                          ('admin', hashed_password))
         
         conn.commit()
 
@@ -257,3 +276,29 @@ def get_pidum_report_data(bulan=None, tahun=None):
             result.append(data)
         
         return result
+
+def authenticate_user(username, password):
+    """Authenticate user credentials"""
+    hashed_password = hashlib.sha256(password.encode()).hexdigest()
+    
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, username FROM users WHERE username = ? AND password = ?',
+                      (username, hashed_password))
+        user = cursor.fetchone()
+        
+        return dict(user) if user else None
+
+def create_user(username, password):
+    """Create a new user"""
+    hashed_password = hashlib.sha256(password.encode()).hexdigest()
+    
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute('INSERT INTO users (username, password) VALUES (?, ?)',
+                          (username, hashed_password))
+            conn.commit()
+            return True
+        except sqlite3.IntegrityError:
+            return False

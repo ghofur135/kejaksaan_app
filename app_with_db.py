@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session, jsonify
+from functools import wraps
 import pandas as pd
 import os
 from datetime import datetime
@@ -14,7 +15,8 @@ from database import (
     get_all_pidum_data, get_all_pidsus_data,
     get_pidum_data_for_export, get_pidsus_data_for_export,
     get_database_stats, get_pidum_report_data,
-    delete_all_pidum_data, delete_pidum_item
+    delete_all_pidum_data, delete_pidum_item,
+    authenticate_user
 )
 from import_helper import process_import_file, get_jenis_perkara_suggestions, prepare_import_data
 from import_pra_penuntutan_helper import (
@@ -102,16 +104,52 @@ def sum_numeric(data_list, attribute):
     except (ValueError, TypeError):
         return 0
 
+# Login decorator
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        
+        user = authenticate_user(username, password)
+        
+        if user:
+            session['user_id'] = user['id']
+            session['username'] = user['username']
+            flash('Login berhasil!', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('Username atau password salah!', 'error')
+    
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('Anda telah keluar dari sistem.', 'success')
+    return redirect(url_for('login'))
+
 @app.route('/')
+@login_required
 def index():
     stats = get_database_stats()
     return render_template('index.html', stats=stats)
 
 @app.route('/pilihan_laporan')
+@login_required
 def pilihan_laporan():
     return render_template('pilihan_laporan.html')
 
 @app.route('/laporan_pidum_bulanan')
+@login_required
 def laporan_pidum_bulanan():
     # Get filter parameters
     tahun = request.args.get('tahun', type=int, default=2025)
@@ -288,6 +326,7 @@ def laporan_pidum_bulanan():
                          current_date=current_date)
 
 @app.route('/input_pidum', methods=['GET', 'POST'])
+@login_required
 def input_pidum():
     # Redirect langsung ke halaman pilihan import data PIDUM
     # Bisa pilih dari dropdown import tahapan penanganan
@@ -320,6 +359,7 @@ def input_pidum():
     return render_template('pilihan_import_pidum.html', data=data)
 
 @app.route('/manual_input_pidum', methods=['GET', 'POST'])
+@login_required
 def manual_input_pidum():
     """Route untuk input manual data PIDUM (form asli)"""
     if request.method == 'POST':
@@ -347,6 +387,7 @@ def manual_input_pidum():
     return render_template('input_pidum.html', data=data)
 
 @app.route('/input_pidsus', methods=['GET', 'POST'])
+@login_required
 def input_pidsus():
     if request.method == 'POST':
         try:
@@ -374,16 +415,19 @@ def input_pidsus():
     return render_template('input_pidsus.html', data=data)
 
 @app.route('/view_pidum')
+@login_required
 def view_pidum():
     data = get_all_pidum_data()  # Changed to include ID for delete functionality
     return render_template('view_pidum.html', data=data)
 
 @app.route('/view_pidsus')
+@login_required
 def view_pidsus():
     data = get_pidsus_data_for_export()
     return render_template('view_pidsus.html', data=data)
 
 @app.route('/delete_all_pidum', methods=['POST'])
+@login_required
 def delete_all_pidum():
     """Delete all PIDUM data"""
     try:
@@ -394,6 +438,7 @@ def delete_all_pidum():
     return redirect(url_for('view_pidum'))
 
 @app.route('/delete_pidum_item/<int:item_id>', methods=['POST'])
+@login_required
 def delete_pidum_item_route(item_id):
     """Delete single PIDUM item by ID"""
     try:
@@ -407,6 +452,7 @@ def delete_pidum_item_route(item_id):
     return redirect(url_for('view_pidum'))
 
 @app.route('/laporan_pidum')
+@login_required
 def laporan_pidum():
     # Get filter parameters
     # Bulan bisa kosong untuk menampilkan semua bulan
@@ -609,6 +655,7 @@ def laporan_pidum():
     )
 
 @app.route('/laporan_pidum_new')
+@login_required
 def laporan_pidum_new():
     # Get filter parameters
     bulan = request.args.get('bulan', type=int)
@@ -731,6 +778,7 @@ def laporan_pidum_new():
                          current_date=current_date)
 
 @app.route('/export_pidum_excel')
+@login_required
 def export_pidum_excel():
     data = get_pidum_data_for_export()
     if not data:
@@ -786,6 +834,7 @@ def export_pidum_excel():
     )
 
 @app.route('/export_pidum_new_excel')
+@login_required
 def export_pidum_new_excel():
     # Get filter parameters from request
     start_date = request.args.get('start_date')
@@ -931,6 +980,7 @@ def export_pidum_new_excel():
     )
 
 @app.route('/export_pidum_new_word')
+@login_required
 def export_pidum_new_word():
     try:
         from docx import Document
@@ -1212,6 +1262,7 @@ def export_pidum_new_word():
     )
 
 @app.route('/export_pidsus_excel')
+@login_required
 def export_pidsus_excel():
     data = get_pidsus_data_for_export()
     if not data:
@@ -1267,6 +1318,7 @@ def export_pidsus_excel():
     )
 
 @app.route('/pidum_charts')
+@login_required
 def pidum_charts():
     data = get_pidum_data_for_export()
     if not data:
@@ -1311,6 +1363,7 @@ def pidum_charts():
     return render_template('pidum_charts.html', charts=charts)
 
 @app.route('/pidsus_charts')
+@login_required
 def pidsus_charts():
     data = get_pidsus_data_for_export()
     if not data:
@@ -1355,6 +1408,7 @@ def pidsus_charts():
     return render_template('pidsus_charts.html', charts=charts)
 
 @app.route('/database_info')
+@login_required
 def database_info():
     """Route untuk melihat informasi database"""
     stats = get_database_stats()
@@ -1368,6 +1422,7 @@ def database_info():
     """
 
 @app.route('/import_pra_penuntutan_api', methods=['GET', 'POST'])
+@login_required
 def import_pra_penuntutan_api():
     """API khusus untuk import data pra penuntutan dengan format CSV khusus"""
     if request.method == 'POST':
@@ -1407,6 +1462,7 @@ def import_pra_penuntutan_api():
     return render_template('import_pra_penuntutan.html')
 
 @app.route('/confirm_import_pra_penuntutan', methods=['POST'])
+@login_required
 def confirm_import_pra_penuntutan():
     """Confirm and process pra penuntutan import"""
     import_data = session.get('import_data_pra_penuntutan', [])
@@ -1458,6 +1514,7 @@ def confirm_import_pra_penuntutan():
     return redirect(url_for('view_pidum'))
 
 @app.route('/import_upaya_hukum_api', methods=['GET', 'POST'])
+@login_required
 def import_upaya_hukum_api():
     """API khusus untuk import data upaya hukum dengan format CSV khusus"""
     if request.method == 'POST':
@@ -1497,6 +1554,7 @@ def import_upaya_hukum_api():
     return render_template('import_upaya_hukum.html')
 
 @app.route('/confirm_import_upaya_hukum', methods=['POST'])
+@login_required
 def confirm_import_upaya_hukum():
     """Confirm and process upaya hukum import"""
     import_data = session.get('import_data_upaya_hukum', [])
@@ -1548,6 +1606,7 @@ def confirm_import_upaya_hukum():
     return redirect(url_for('view_pidum'))
 
 @app.route('/import_tahapan/<tahapan>', methods=['GET', 'POST'])
+@login_required
 def import_tahapan(tahapan):
     """Route untuk import data berdasarkan tahapan penanganan perkara"""
     # Redirect pra_penuntutan ke API khusus
@@ -1615,6 +1674,7 @@ def import_tahapan(tahapan):
     return render_template(template_mapping[tahapan])
 
 @app.route('/confirm_import_tahapan', methods=['POST'])
+@login_required
 def confirm_import_tahapan():
     """Confirm and process import with selected jenis perkara for specific tahapan"""
     import_data = session.get('import_data', [])
@@ -1691,6 +1751,7 @@ def confirm_import_tahapan():
     return redirect(url_for('view_pidum'))
 
 @app.route('/import_pidum', methods=['GET', 'POST'])
+@login_required
 def import_pidum():
     """Route untuk import data PIDUM dari file Excel/CSV"""
     if request.method == 'POST':
@@ -1731,6 +1792,7 @@ def import_pidum():
     return render_template('import_pidum.html')
 
 @app.route('/confirm_import_pidum', methods=['POST'])
+@login_required
 def confirm_import_pidum():
     """Confirm and process PIDUM import with selected jenis perkara"""
     import_data = session.get('import_data', [])
