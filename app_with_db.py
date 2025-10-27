@@ -1955,4 +1955,4 @@ except ImportError as e:
 
 if __name__ == '__main__':
     print(f"Database initialized at: {get_database_stats()['database_path']}")
-    app.run(debug=False, host='127.0.0.1', port=5002, threaded=True, use_reloader=False)
+    app.run(host='0.0.0.0', port=5001)
