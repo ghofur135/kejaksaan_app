@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Data PIDUM - Aplikasi Data PIDUM & PIDSUS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-edit"></i> Edit Data PIDUM</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('edit_pidum', item_id=data.id) }}">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="no" class="form-label">Nomor</label>
+                                <input type="text" class="form-control" id="no" name="no" value="{{ data.no }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="periode" class="form-label">Periode</label>
+                                <input type="text" class="form-control" id="periode" name="periode" value="{{ data.periode }}" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="tanggal" class="form-label">Tanggal</label>
+                                <input type="date" class="form-control" id="tanggal" name="tanggal" value="{{ data.tanggal }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="jenis_perkara" class="form-label">Jenis Perkara</label>
+                                <select class="form-select" id="jenis_perkara" name="jenis_perkara" required>
+                                    <option value="">Pilih Jenis Perkara</option>
+                                    <option value="NARKOBA" {% if data.jenis_perkara == 'NARKOBA' %}selected{% endif %}>NARKOBA</option>
+                                    <option value="PERKARA ANAK" {% if data.jenis_perkara == 'PERKARA ANAK' %}selected{% endif %}>PERKARA ANAK</option>
+                                    <option value="KESUSILAAN" {% if data.jenis_perkara == 'KESUSILAAN' %}selected{% endif %}>KESUSILAAN</option>
+                                    <option value="JUDI" {% if data.jenis_perkara == 'JUDI' %}selected{% endif %}>JUDI</option>
+                                    <option value="KDRT" {% if data.jenis_perkara == 'KDRT' %}selected{% endif %}>KDRT</option>
+                                    <option value="OHARDA" {% if data.jenis_perkara == 'OHARDA' %}selected{% endif %}>OHARDA</option>
+                                    <option value="PERKARA LAINNYA" {% if data.jenis_perkara == 'PERKARA LAINNYA' %}selected{% endif %}>PERKARA LAINNYA</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="tahapan_penanganan" class="form-label">Tahapan Penanganan</label>
+                                <select class="form-select" id="tahapan_penanganan" name="tahapan_penanganan" required>
+                                    <option value="">Pilih Tahapan Penanganan</option>
+                                    <option value="PRA PENUNTUTAN" {% if data.tahapan_penanganan == 'PRA PENUNTUTAN' %}selected{% endif %}>PRA PENUNTUTAN</option>
+                                    <option value="PENUNTUTAN" {% if data.tahapan_penanganan == 'PENUNTUTAN' %}selected{% endif %}>PENUNTUTAN</option>
+                                    <option value="UPAYA HUKUM" {% if data.tahapan_penanganan == 'UPAYA HUKUM' %}selected{% endif %}>UPAYA HUKUM</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="keterangan" class="form-label">Keterangan</label>
+                                <textarea class="form-control" id="keterangan" name="keterangan" rows="1">{{ data.keterangan }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('view_pidum') }}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> Kembali
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Simpan Perubahan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

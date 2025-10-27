@@ -57,7 +57,10 @@
                                         <small>{{ item.keterangan[:50] if item.keterangan else '-' }}{% if item.keterangan and item.keterangan|length > 50 %}...{% endif %}</small>
                                     </td>
                                     <td>
-                                        <button type="button" class="btn btn-danger btn-sm" 
+                                        <a href="{{ url_for('edit_pidum', item_id=item.id) }}" class="btn btn-warning btn-sm me-1">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-danger btn-sm"
                                                 onclick="confirmDelete({{ item.id }}, '{{ item.no|e }}')">
                                             <i class="fas fa-trash"></i>
                                         </button>

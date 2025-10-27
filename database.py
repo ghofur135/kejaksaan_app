@@ -162,6 +162,27 @@ def delete_pidum_item(item_id):
         conn.commit()
         return cursor.rowcount > 0
 
+def update_pidum_data(item_id, data):
+    """Update PIDUM data by ID"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE pidum_data
+            SET no=?, periode=?, tanggal=?, jenis_perkara=?, tahapan_penanganan=?, keterangan=?
+            WHERE id=?
+        ''', (data['NO'], data['PERIODE'], data['TANGGAL'], data['JENIS PERKARA'],
+              data['TAHAPAN_PENANGANAN'], data['KETERANGAN'], item_id))
+        conn.commit()
+        return cursor.rowcount > 0
+
+def get_pidum_data_by_id(item_id):
+    """Get single PIDUM data by ID"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM pidum_data WHERE id = ?', (item_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
 def delete_all_pidsus_data():
     """Delete all PIDSUS data (for testing)"""
     with get_db_connection() as conn:

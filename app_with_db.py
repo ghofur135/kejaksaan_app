@@ -16,6 +16,7 @@ from database import (
     get_pidum_data_for_export, get_pidsus_data_for_export,
     get_database_stats, get_pidum_report_data,
     delete_all_pidum_data, delete_pidum_item,
+    update_pidum_data, get_pidum_data_by_id,
     authenticate_user
 )
 from import_helper import process_import_file, get_jenis_perkara_suggestions, prepare_import_data
@@ -501,6 +502,42 @@ def delete_pidum_item_route(item_id):
     except Exception as e:
         flash(f'Error menghapus data: {str(e)}', 'error')
     return redirect(url_for('view_pidum'))
+
+@app.route('/edit_pidum/<int:item_id>', methods=['GET', 'POST'])
+@login_required
+def edit_pidum(item_id):
+    """Edit PIDUM data by ID"""
+    if request.method == 'GET':
+        # Get the data to edit
+        data = get_pidum_data_by_id(item_id)
+        if not data:
+            flash('Data tidak ditemukan', 'error')
+            return redirect(url_for('view_pidum'))
+        return render_template('edit_pidum.html', data=data)
+    
+    elif request.method == 'POST':
+        try:
+            # Get form data
+            updated_data = {
+                'NO': request.form['no'],
+                'PERIODE': request.form['periode'],
+                'TANGGAL': request.form['tanggal'],
+                'JENIS PERKARA': request.form['jenis_perkara'],
+                'TAHAPAN_PENANGANAN': request.form['tahapan_penanganan'],
+                'KETERANGAN': request.form['keterangan']
+            }
+            
+            # Update data in database
+            success = update_pidum_data(item_id, updated_data)
+            if success:
+                flash('Data PIDUM berhasil diperbarui!', 'success')
+            else:
+                flash('Data tidak ditemukan', 'error')
+            
+            return redirect(url_for('view_pidum'))
+        except Exception as e:
+            flash(f'Terjadi kesalahan: {str(e)}', 'error')
+            return redirect(url_for('view_pidum'))
 
 @app.route('/laporan_pidum')
 @login_required
