@@ -89,4 +89,4 @@ logs/
 
 # Database files
 *.db
-!kejaksaan.db
+db/kejaksaan.db
