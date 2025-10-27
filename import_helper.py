@@ -3,6 +3,7 @@ import io
 from werkzeug.utils import secure_filename
 import os
 from datetime import datetime
+import re
 
 def allowed_file(filename):
     """Check if uploaded file has allowed extension"""
@@ -75,28 +76,41 @@ def process_import_file(file, tahapan_penanganan=None):
                 elif 'NO_TANGGAL_REGISTER_PERKARA' in clean_key:
                     # Extract date from register format like "PDM-\n22/PRBAL/Enz.2/09/2025\n2025-09-01"
                     register_value = clean_value
-                    if '\n' in register_value:
-                        parts = register_value.split('\n')
-                        # Look for the date part (format YYYY-MM-DD)
-                        for part in parts:
-                            part = part.strip()
-                            if len(part) == 10 and part.count('-') == 2:  # Format YYYY-MM-DD
-                                try:
-                                    # Validate it's a proper date
-                                    year, month, day = part.split('-')
-                                    if len(year) == 4 and len(month) == 2 and len(day) == 2:
-                                        std_row['TANGGAL'] = part
-                                        break
-                                except:
-                                    continue
+                    found_date = None
+                    
+                    # First, try to find YYYY-MM-DD format using regex
+                    date_pattern = r'(\d{4})-(\d{2})-(\d{2})'
+                    date_match = re.search(date_pattern, register_value)
+                    if date_match:
+                        found_date = date_match.group(0)
+                    
+                    # If not found, try to extract from register format like "Enz.2/09/2025" or "/09/2025"
+                    if not found_date:
+                        # Look for pattern like "/MM/YYYY" at the end
+                        register_parts = register_value.split('/')
+                        if len(register_parts) >= 2:
+                            # Get the last two parts (should be MM and YYYY)
+                            year_str = register_parts[-1].split()[0] if register_parts[-1] else ''
+                            month_str = register_parts[-2] if len(register_parts) > 1 else ''
+                            
+                            # Validate they look like numbers
+                            if year_str.isdigit() and month_str.isdigit():
+                                year = year_str if len(year_str) == 4 else str(2025)
+                                month = month_str.zfill(2)
+                                # Extract day from the register number if available
+                                # Look for single digit after a slash before month, e.g., "/2/09/2025"
+                                day_match = re.search(r'/(\d{1,2})/\d{2}/\d{4}', register_value)
+                                if day_match:
+                                    day = day_match.group(1).zfill(2)
+                                else:
+                                    day = '01'
+                                found_date = f"{year}-{month}-{day}"
+                    
+                    if found_date:
+                        std_row['TANGGAL'] = found_date
                     else:
-                        # If no newline, try to extract date from the register number itself
-                        # Look for pattern like "/09/2025" in "PDM-22/PRBAL/Enz.2/09/2025"
-                        parts = register_value.split('/')
-                        if len(parts) >= 3:
-                            month = parts[-2].zfill(2) if parts[-2].isdigit() else '01'
-                            year = parts[-1] if parts[-1].isdigit() else '2025'
-                            std_row['TANGGAL'] = f"{year}-{month}-01"
+                        # Fallback to current date if parsing fails
+                        std_row['TANGGAL'] = datetime.now().strftime('%Y-%m-%d')
                 elif 'IDENTITAS_TERSANGKA' in clean_key:
                     # Store suspect identity as part of keterangan
                     if std_row['KETERANGAN']:
