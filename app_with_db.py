@@ -1731,11 +1731,6 @@ def import_tahapan(tahapan):
                 session['import_filename'] = file.filename
                 session['import_tahapan'] = tahapan_penanganan
                 
-                # DEBUG: Print tanggal for first few rows
-                print("[DEBUG] First 3 rows tanggal from import_helper:")
-                for i in range(min(3, len(result['data']))):
-                    print(f"  Row {i}: {result['data'][i].get('TANGGAL')}")
-                
                 # Add suggestions for jenis perkara
                 for i, row in enumerate(result['data']):
                     original_jenis = row.get('JENIS_PERKARA_ORIGINAL', '')
