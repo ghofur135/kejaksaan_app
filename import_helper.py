@@ -78,11 +78,15 @@ def process_import_file(file, tahapan_penanganan=None):
                     register_value = clean_value
                     found_date = None
                     
+                    print(f"[DEBUG] Processing NO_TANGGAL_REGISTER_PERKARA row {i}")
+                    print(f"[DEBUG] Raw register_value: {repr(register_value[:80])}")
+                    
                     # First, try to find YYYY-MM-DD format using regex
                     date_pattern = r'(\d{4})-(\d{2})-(\d{2})'
                     date_match = re.search(date_pattern, register_value)
                     if date_match:
                         found_date = date_match.group(0)
+                        print(f"[DEBUG] Regex matched: {found_date}")
                     
                     # If not found, try to extract from register format like "Enz.2/09/2025" or "/09/2025"
                     if not found_date:
@@ -108,9 +112,12 @@ def process_import_file(file, tahapan_penanganan=None):
                     
                     if found_date:
                         std_row['TANGGAL'] = found_date
+                        print(f"[DEBUG] Final TANGGAL set to: {found_date}")
                     else:
                         # Fallback to current date if parsing fails
-                        std_row['TANGGAL'] = datetime.now().strftime('%Y-%m-%d')
+                        fallback_date = datetime.now().strftime('%Y-%m-%d')
+                        std_row['TANGGAL'] = fallback_date
+                        print(f"[DEBUG] Using fallback date: {fallback_date}")
                 elif 'IDENTITAS_TERSANGKA' in clean_key:
                     # Store suspect identity as part of keterangan
                     if std_row['KETERANGAN']:
@@ -139,7 +146,9 @@ def process_import_file(file, tahapan_penanganan=None):
             # If no explicit TANGGAL, use current date
             if not std_row['TANGGAL']:
                 std_row['TANGGAL'] = datetime.now().strftime('%Y-%m-%d')
+                print(f"[DEBUG] Row {i}: TANGGAL was empty, using current date: {std_row['TANGGAL']}")
             
+            print(f"[DEBUG] Row {i} final: NO={std_row['NO']}, TANGGAL={std_row['TANGGAL']}")
             standardized_data.append(std_row)
         
         return {
