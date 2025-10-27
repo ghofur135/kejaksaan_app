@@ -70,14 +70,19 @@ def get_jenis_perkara_suggestions_upaya_hukum(terdakwa_info):
     
     # Mapping berdasarkan kata kunci yang mungkin ada dalam data terdakwa
     suggestions = {
-        'narkotika': ['narkotika', 'narkoba', 'sabu', 'ganja', 'kokain', 'ekstasi'],
-        'korupsi': ['korupsi', 'gratifikasi', 'suap', 'penggelapan'],
-        'pencurian': ['curi', 'pencurian', 'theft'],
-        'penipuan': ['tipu', 'penipuan', 'fraud'],
-        'penganiayaan': ['aniaya', 'penganiayaan', 'kekerasan'],
-        'pembunuhan': ['bunuh', 'pembunuhan', 'murder'],
-        'perkosaan': ['perkosa', 'pemerkosaan', 'sexual'],
-        'pengelapan': ['gelap', 'pengelapan', 'embezzlement'],
+        'narkotika': ['narkotika', 'narkoba', 'sabu', 'ganja', 'kokain', 'ekstasi', 'heroin', 'methamphetamin'],
+        'korupsi': ['korupsi', 'gratifikasi', 'suap', 'penggelapan uang negara', 'keuangan negara'],
+        'pencurian': ['curi', 'pencurian', 'theft', 'maling'],
+        'penipuan': ['tipu', 'penipuan', 'fraud', 'penipuan investasi'],
+        'penganiayaan': ['aniaya', 'penganiayaan', 'kekerasan', 'violence', 'pukul', 'hajar'],
+        'pembunuhan': ['bunuh', 'pembunuhan', 'murder', 'tewas', 'meninggal'],
+        'perkosaan': ['perkosa', 'pemerkosaan', 'sexual', 'asusila', 'layanan asusila'],
+        'pengelapan': ['gelap', 'pengelapan', 'embezzlement', 'penggapaian'],
+        'perkara anak': ['anak', 'juvenile', 'minor', 'remaja', 'uu no. 23 tahun 2002', 'uu no.23 tahun 2002', 'anak di bawah umur'],
+        'kesusilaan': ['kesusilaan', 'susila', 'moral', 'cabul', 'layanan seks', 'prostitusi'],
+        'judi': ['judi', 'gambling', 'togel', 'taruhan', 'sabung ayam'],
+        'kdrt': ['kdrt', 'kekerasan dalam rumah tangga', 'domestic violence', 'istri', 'suami', 'orang tua'],
+        'oharda': ['oharda', 'orang hilang', 'harta benda', 'pasal 372', 'pasal 378', 'pasal 362', 'pasal 363'],
     }
     
     # Cek kata kunci dalam terdakwa info
