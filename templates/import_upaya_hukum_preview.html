@@ -51,27 +51,13 @@
                                     <td>
                                         <select name="jenis_perkara_{{ loop.index0 }}" class="form-select form-select-sm">
                                             <option value="">-- Pilih Jenis Perkara --</option>
-                                            <optgroup label="Umum">
-                                                <option value="NARKOTIKA" {% if row.SUGGESTED_JENIS_PERKARA == 'NARKOTIKA' %}selected{% endif %}>NARKOTIKA</option>
-                                                <option value="KORUPSI" {% if row.SUGGESTED_JENIS_PERKARA == 'KORUPSI' %}selected{% endif %}>KORUPSI</option>
-                                                <option value="PENCURIAN" {% if row.SUGGESTED_JENIS_PERKARA == 'PENCURIAN' %}selected{% endif %}>PENCURIAN</option>
-                                                <option value="PENIPUAN" {% if row.SUGGESTED_JENIS_PERKARA == 'PENIPUAN' %}selected{% endif %}>PENIPUAN</option>
-                                                <option value="PENGANIAYAAN" {% if row.SUGGESTED_JENIS_PERKARA == 'PENGANIAYAAN' %}selected{% endif %}>PENGANIAYAAN</option>
-                                                <option value="PEMBUNUHAN" {% if row.SUGGESTED_JENIS_PERKARA == 'PEMBUNUHAN' %}selected{% endif %}>PEMBUNUHAN</option>
-                                                <option value="PERKOSAAN" {% if row.SUGGESTED_JENIS_PERKARA == 'PERKOSAAN' %}selected{% endif %}>PERKOSAAN</option>
-                                                <option value="PENGELAPAN" {% if row.SUGGESTED_JENIS_PERKARA == 'PENGELAPAN' %}selected{% endif %}>PENGELAPAN</option>
-                                            </optgroup>
-                                            <optgroup label="Khusus">
-                                                <option value="NARKOBA" {% if row.SUGGESTED_JENIS_PERKARA == 'NARKOBA' %}selected{% endif %}>NARKOBA</option>
-                                                <option value="PERKARA ANAK" {% if row.SUGGESTED_JENIS_PERKARA == 'PERKARA ANAK' %}selected{% endif %}>PERKARA ANAK</option>
-                                                <option value="KESUSILAAN" {% if row.SUGGESTED_JENIS_PERKARA == 'KESUSILAAN' %}selected{% endif %}>KESUSILAAN</option>
-                                                <option value="JUDI" {% if row.SUGGESTED_JENIS_PERKARA == 'JUDI' %}selected{% endif %}>JUDI</option>
-                                                <option value="KDRT" {% if row.SUGGESTED_JENIS_PERKARA == 'KDRT' %}selected{% endif %}>KDRT (Kekerasan Dalam Rumah Tangga)</option>
-                                                <option value="OHARDA" {% if row.SUGGESTED_JENIS_PERKARA == 'OHARDA' %}selected{% endif %}>OHARDA</option>
-                                            </optgroup>
-                                            <optgroup label="Lainnya">
-                                                <option value="PERKARA LAINNYA" {% if row.SUGGESTED_JENIS_PERKARA == 'PERKARA LAINNYA' %}selected{% endif %}>PERKARA LAINNYA</option>
-                                            </optgroup>
+                                            <option value="NARKOBA" {% if row.SUGGESTED_JENIS_PERKARA == 'NARKOBA' %}selected{% endif %}>NARKOBA</option>
+                                            <option value="PERKARA ANAK" {% if row.SUGGESTED_JENIS_PERKARA == 'PERKARA ANAK' %}selected{% endif %}>PERKARA ANAK</option>
+                                            <option value="KESUSILAAN" {% if row.SUGGESTED_JENIS_PERKARA == 'KESUSILAAN' %}selected{% endif %}>KESUSILAAN</option>
+                                            <option value="JUDI" {% if row.SUGGESTED_JENIS_PERKARA == 'JUDI' %}selected{% endif %}>JUDI</option>
+                                            <option value="KDRT" {% if row.SUGGESTED_JENIS_PERKARA == 'KDRT' %}selected{% endif %}>KDRT</option>
+                                            <option value="OHARDA" {% if row.SUGGESTED_JENIS_PERKARA == 'OHARDA' %}selected{% endif %}>OHARDA</option>
+                                            <option value="PERKARA LAINNYA" {% if row.SUGGESTED_JENIS_PERKARA == 'PERKARA LAINNYA' %}selected{% endif %}>PERKARA LAINNYA</option>
                                         </select>
                                         <small class="text-muted">
                                             Terdakwa: {{ row.TERDAKWA_ORIGINAL[:50] }}{% if row.TERDAKWA_ORIGINAL|length > 50 %}...{% endif %}

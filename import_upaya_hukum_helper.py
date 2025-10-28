@@ -69,27 +69,22 @@ def get_jenis_perkara_suggestions_upaya_hukum(terdakwa_info):
     terdakwa_lower = str(terdakwa_info).lower()
     
     # Mapping berdasarkan kata kunci yang mungkin ada dalam data terdakwa
+    # Hanya 7 jenis perkara yang diizinkan
     suggestions = {
-        'narkotika': ['narkotika', 'narkoba', 'sabu', 'ganja', 'kokain', 'ekstasi', 'heroin', 'methamphetamin'],
-        'korupsi': ['korupsi', 'gratifikasi', 'suap', 'penggelapan uang negara', 'keuangan negara'],
-        'pencurian': ['curi', 'pencurian', 'theft', 'maling'],
-        'penipuan': ['tipu', 'penipuan', 'fraud', 'penipuan investasi'],
-        'penganiayaan': ['aniaya', 'penganiayaan', 'kekerasan', 'violence', 'pukul', 'hajar'],
-        'pembunuhan': ['bunuh', 'pembunuhan', 'murder', 'tewas', 'meninggal'],
-        'perkosaan': ['perkosa', 'pemerkosaan', 'sexual', 'asusila', 'layanan asusila'],
-        'pengelapan': ['gelap', 'pengelapan', 'embezzlement', 'penggapaian'],
-        'perkara anak': ['anak', 'juvenile', 'minor', 'remaja', 'uu no. 23 tahun 2002', 'uu no.23 tahun 2002', 'anak di bawah umur'],
-        'kesusilaan': ['kesusilaan', 'susila', 'moral', 'cabul', 'layanan seks', 'prostitusi'],
-        'judi': ['judi', 'gambling', 'togel', 'taruhan', 'sabung ayam'],
-        'kdrt': ['kdrt', 'kekerasan dalam rumah tangga', 'domestic violence', 'istri', 'suami', 'orang tua'],
-        'oharda': ['oharda', 'orang hilang', 'harta benda', 'pasal 372', 'pasal 378', 'pasal 362', 'pasal 363'],
+        'NARKOBA': ['narkotika', 'narkoba', 'sabu', 'ganja', 'kokain', 'ekstasi', 'heroin', 'methamphetamin'],
+        'PERKARA ANAK': ['anak', 'juvenile', 'minor', 'remaja', 'uu no. 23 tahun 2002', 'uu no.23 tahun 2002', 'anak di bawah umur'],
+        'KESUSILAAN': ['kesusilaan', 'susila', 'moral', 'cabul', 'layanan seks', 'prostitusi', 'asusila', 'perkosa', 'pemerkosaan', 'sexual'],
+        'JUDI': ['judi', 'gambling', 'togel', 'taruhan', 'sabung ayam'],
+        'KDRT': ['kdrt', 'kekerasan dalam rumah tangga', 'domestic violence', 'istri', 'suami', 'orang tua'],
+        'OHARDA': ['oharda', 'orang hilang', 'harta benda', 'pasal 372', 'pasal 378', 'pasal 362', 'pasal 363', 'gelap', 'pengelapan', 'embezzlement', 'penggapaian', 'curi', 'pencurian', 'theft', 'maling', 'tipu', 'penipuan', 'fraud', 'penipuan investasi'],
+        'PERKARA LAINNYA': []  # Default for cases that don't match other categories
     }
     
     # Cek kata kunci dalam terdakwa info
     for jenis, keywords in suggestions.items():
         for keyword in keywords:
             if keyword in terdakwa_lower:
-                return jenis.upper()
+                return jenis
     
     # Default suggestion
     return 'PERKARA LAINNYA'
