@@ -130,6 +130,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const values = [];
     
     // Create a map of existing data from the table
+    // Fix: Sum all values for each jenis_perkara across all months
     const dataMap = {};
     tableRows.forEach(row => {
         const cols = row.querySelectorAll('td');
@@ -137,7 +138,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const jenisPerkara = cols[2].textContent.trim();
         const jumlah = parseInt(cols[3].textContent.trim(), 10);
         if (jenisPerkara && !isNaN(jumlah)) {
-            dataMap[jenisPerkara] = jumlah;
+            // Sum values for each jenis_perkara instead of overwriting
+            if (dataMap[jenisPerkara]) {
+                dataMap[jenisPerkara] += jumlah;
+            } else {
+                dataMap[jenisPerkara] = jumlah;
+            }
         }
     });
     
