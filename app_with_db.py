@@ -15,8 +15,10 @@ from database import (
     get_all_pidum_data, get_all_pidsus_data,
     get_pidum_data_for_export, get_pidsus_data_for_export,
     get_database_stats, get_pidum_report_data,
+    get_pidsus_report_data, get_pidsus_report_data_bulanan,
     delete_all_pidum_data, delete_pidum_item,
     update_pidum_data, get_pidum_data_by_id,
+    get_pidsus_data_by_id, update_pidsus_data, delete_pidsus_item, delete_all_pidsus_data,
     authenticate_user
 )
 from import_helper import process_import_file, get_jenis_perkara_suggestions, prepare_import_data
@@ -502,6 +504,68 @@ def delete_pidum_item_route(item_id):
     except Exception as e:
         flash(f'Error menghapus data: {str(e)}', 'error')
     return redirect(url_for('view_pidum'))
+
+@app.route('/edit_pidsus/<int:item_id>', methods=['GET', 'POST'])
+@login_required
+def edit_pidsus(item_id):
+    """Edit PIDSUS data by ID"""
+    if request.method == 'GET':
+        # Get the data to edit
+        data = get_pidsus_data_by_id(item_id)
+        if not data:
+            flash('Data tidak ditemukan', 'error')
+            return redirect(url_for('view_pidsus'))
+        return render_template('edit_pidsus.html', data=data)
+    
+    elif request.method == 'POST':
+        try:
+            # Get form data
+            updated_data = {
+                'NO': request.form['no'],
+                'PERIODE': request.form['periode'],
+                'TANGGAL': request.form['tanggal'],
+                'JENIS PERKARA': request.form['jenis_perkara'],
+                'PENYIDIKAN': request.form['penyidikan'],
+                'PENUNTUTAN': request.form['penuntutan'],
+                'KETERANGAN': request.form['keterangan']
+            }
+            
+            # Update data in database
+            success = update_pidsus_data(item_id, updated_data)
+            if success:
+                flash('Data PIDSUS berhasil diperbarui!', 'success')
+            else:
+                flash('Data tidak ditemukan', 'error')
+            
+            return redirect(url_for('view_pidsus'))
+        except Exception as e:
+            flash(f'Terjadi kesalahan: {str(e)}', 'error')
+            return redirect(url_for('view_pidsus'))
+
+@app.route('/delete_pidsus_item/<int:item_id>', methods=['POST'])
+@login_required
+def delete_pidsus_item_route(item_id):
+    """Delete single PIDSUS item by ID"""
+    try:
+        success = delete_pidsus_item(item_id)
+        if success:
+            flash('Data berhasil dihapus', 'success')
+        else:
+            flash('Data tidak ditemukan', 'error')
+    except Exception as e:
+        flash(f'Error menghapus data: {str(e)}', 'error')
+    return redirect(url_for('view_pidsus'))
+
+@app.route('/delete_all_pidsus', methods=['POST'])
+@login_required
+def delete_all_pidsus():
+    """Delete all PIDSUS data"""
+    try:
+        deleted_count = delete_all_pidsus_data()
+        flash(f'Berhasil menghapus {deleted_count} data PIDSUS', 'success')
+    except Exception as e:
+        flash(f'Error menghapus data: {str(e)}', 'error')
+    return redirect(url_for('view_pidsus'))
 
 @app.route('/edit_pidum/<int:item_id>', methods=['GET', 'POST'])
 @login_required
@@ -1989,6 +2053,860 @@ try:
     print("PDF conversion routes registered successfully")
 except ImportError as e:
     print(f"Warning: Could not register PDF routes: {e}")
+
+@app.route('/laporan_pidsus')
+@login_required
+def laporan_pidsus():
+    # Get filter parameters
+    # Bulan bisa kosong untuk menampilkan semua bulan
+    bulan_raw = request.args.get('bulan')
+    bulan = int(bulan_raw) if bulan_raw not in (None, '') else None
+    tahun = request.args.get('tahun', type=int)
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+
+    # Default to current month/year if not specified
+    from datetime import datetime
+    # Hanya default ke bulan berjalan jika user tidak mengirim parameter 'bulan' sama sekali
+    if 'bulan' not in request.args:
+        if not bulan:
+            bulan = datetime.now().month
+    if not tahun:
+        tahun = datetime.now().year
+
+    # Query database using filters similar to laporan_pidum_new
+    import sqlite3
+    from collections import defaultdict
+
+    conn = sqlite3.connect('db/kejaksaan.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    where_conditions = []
+    params = []
+
+    if bulan:
+        where_conditions.append("strftime('%m', tanggal) = ?")
+        params.append(f"{bulan:02d}")
+
+    if tahun:
+        where_conditions.append("strftime('%Y', tanggal) = ?")
+        params.append(str(tahun))
+
+    if start_date:
+        where_conditions.append("tanggal >= ?")
+        params.append(start_date)
+
+    if end_date:
+        where_conditions.append("tanggal <= ?")
+        params.append(end_date)
+
+    where_clause = ""
+    if where_conditions:
+        where_clause = "WHERE " + " AND ".join(where_conditions)
+
+    query = f"""
+    SELECT jenis_perkara, penyidikan, penuntutan,
+           CASE strftime('%m', tanggal)
+               WHEN '01' THEN 'Januari'
+               WHEN '02' THEN 'Februari'
+               WHEN '03' THEN 'Maret'
+               WHEN '04' THEN 'April'
+               WHEN '05' THEN 'Mei'
+               WHEN '06' THEN 'Juni'
+               WHEN '07' THEN 'Juli'
+               WHEN '08' THEN 'Agustus'
+               WHEN '09' THEN 'September'
+               WHEN '10' THEN 'Oktober'
+               WHEN '11' THEN 'November'
+               WHEN '12' THEN 'Desember'
+           END as bulan_nama
+    FROM pidsus_data {where_clause}
+    ORDER BY jenis_perkara
+    """
+
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+
+    # Aggregate per jenis_perkara
+    agg = defaultdict(lambda: {
+        'jenis_perkara': '',
+        'BULAN': '',
+        'JUMLAH': 0,
+        'PENYIDIKAN': 0,
+        'PENUNTUTAN': 0
+    })
+
+    for row in rows:
+        jenis = (row['jenis_perkara'] or '').strip()
+        penyidikan_val = (row['penyidikan'] or '').strip()
+        penuntutan_val = (row['penuntutan'] or '').strip()
+        bulan_nama_row = row['bulan_nama']
+
+        if not jenis:
+            jenis = 'Tidak Diketahui'
+        
+        # Group by both month and jenis_perkara
+        agg_key = (bulan_nama_row, jenis)
+
+        agg[agg_key]['jenis_perkara'] = jenis
+        agg[agg_key]['BULAN'] = bulan_nama_row
+
+        if penyidikan_val == '1':
+            agg[agg_key]['PENYIDIKAN'] += 1
+        if penuntutan_val == '1':
+            agg[agg_key]['PENUNTUTAN'] += 1
+        
+        agg[agg_key]['JUMLAH'] = (
+            agg[agg_key]['PENYIDIKAN'] + agg[agg_key]['PENUNTUTAN']
+        )
+
+    # Ensure all predefined categories exist (including zeros)
+    predefined_categories = [
+        'KORUPSI',
+        'TINDAK PIDANA KORUPSI',
+        'PENYALAHGUNAAN WEWENANG',
+        'GRATIFIKASI',
+        'SUAP',
+        'PENGGELEMBUNGAN PAJAK',
+        'PERKARA LAINNYA'
+    ]
+
+    # Normalize keys to predefined mapping
+    def map_to_predefined(name: str) -> str:
+        upper = (name or '').upper()
+        if 'KORUPSI' in upper:
+            return 'KORUPSI'
+        if 'TINDAK PIDANA KORUPSI' in upper:
+            return 'TINDAK PIDANA KORUPSI'
+        if 'PENYALAHGUNAAN' in upper or 'WEWENANG' in upper:
+            return 'PENYALAHGUNAAN WEWENANG'
+        if 'GRATIFIKASI' in upper:
+            return 'GRATIFIKASI'
+        if 'SUAP' in upper:
+            return 'SUAP'
+        if 'PAJAK' in upper:
+            return 'PENGGELEMBUNGAN PAJAK'
+        return 'PERKARA LAINNYA'
+
+    # Re-map aggregated keys into predefined buckets
+    remapped = defaultdict(lambda: {
+        'jenis_perkara': '',
+        'BULAN': '',
+        'JUMLAH': 0,
+        'PENYIDIKAN': 0,
+        'PENUNTUTAN': 0
+    })
+
+    for (bulan_nama_row, jenis), data in agg.items():
+        bucket = map_to_predefined(jenis)
+        new_key = (bulan_nama_row, bucket)
+
+        remapped[new_key]['BULAN'] = bulan_nama_row
+        remapped[new_key]['jenis_perkara'] = bucket
+        remapped[new_key]['PENYIDIKAN'] += data['PENYIDIKAN']
+        remapped[new_key]['PENUNTUTAN'] += data['PENUNTUTAN']
+        remapped[new_key]['JUMLAH'] += data['JUMLAH']
+
+    # Ensure all predefined categories are present for each month
+    # Get all months present in the data
+    all_months = set()
+    for key in remapped.keys():
+        all_months.add(key[0])  # key[0] is month name
+    
+    # If no specific month is selected, use all months
+    if not bulan:
+        month_names = {
+            1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
+            5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
+            9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
+        }
+        all_months = {month_names.get(bulan, 'Januari') for bulan in range(1, 13)}
+    else:
+        month_names = {
+            1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
+            5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
+            9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
+        }
+        all_months = {month_names.get(bulan, 'Januari')}
+    
+    # Add missing categories with zero values for each month
+    for month in all_months:
+        for category in predefined_categories:
+            key = (month, category)
+            if key not in remapped:
+                remapped[key] = {
+                    'BULAN': month,
+                    'jenis_perkara': category,
+                    'JUMLAH': 0,
+                    'PENYIDIKAN': 0,
+                    'PENUNTUTAN': 0
+                }
+
+    # Convert to list with sequential NO, ordered by predefined list
+    report_data = list(remapped.values())
+
+    month_map = {name: num for num, name in month_names.items()}
+    
+    # Sort data
+    # If a specific month is selected, sort by category only
+    if bulan:
+        report_data.sort(key=lambda x: predefined_categories.index(x['jenis_perkara']) if x['jenis_perkara'] in predefined_categories else -1)
+    else:
+        # Sort by month, then by category
+        report_data.sort(key=lambda x: (month_map.get(x['BULAN'], 0), predefined_categories.index(x['jenis_perkara']) if x['jenis_perkara'] in predefined_categories else -1))
+
+    # Add sequential NO
+    for i, item in enumerate(report_data):
+        item['NO'] = i + 1
+
+    # Calculate totals
+    total_penyidikan = sum(item['PENYIDIKAN'] for item in report_data)
+    total_penuntutan = sum(item['PENUNTUTAN'] for item in report_data)
+    total_keseluruhan = sum(item['JUMLAH'] for item in report_data)
+
+    return render_template(
+        'laporan_pidsus.html',
+        report_data=report_data,
+        bulan=bulan,
+        tahun=tahun,
+        start_date=start_date,
+        end_date=end_date,
+        bulan_nama=(month_names.get(bulan) if bulan else 'Semua Bulan'),
+        total_penyidikan=total_penyidikan,
+        total_penuntutan=total_penuntutan,
+        total_keseluruhan=total_keseluruhan
+    )
+
+@app.route('/laporan_pidsus_bulanan')
+@login_required
+def laporan_pidsus_bulanan():
+    # Get filter parameters
+    tahun = request.args.get('tahun', type=int, default=2025)
+    bulan = request.args.get('bulan', type=int)
+    
+    from datetime import datetime
+    import sqlite3
+    from collections import defaultdict
+    
+    # Get database connection
+    conn = sqlite3.connect('db/kejaksaan.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # Build query with year and optional month filter
+    where_conditions = ["strftime('%Y', tanggal) = ?"]
+    params = [str(tahun)]
+    
+    if bulan:
+        where_conditions.append("strftime('%m', tanggal) = ?")
+        params.append(f"{bulan:02d}")
+    
+    where_clause = "WHERE " + " AND ".join(where_conditions)
+    
+    # Get data from pidsus_data table
+    query = f"""
+    SELECT periode, jenis_perkara, tanggal, penyidikan, penuntutan,
+           strftime('%m', tanggal) as bulan_num,
+           CASE strftime('%m', tanggal)
+               WHEN '01' THEN 'Januari'
+               WHEN '02' THEN 'Februari'
+               WHEN '03' THEN 'Maret'
+               WHEN '04' THEN 'April'
+               WHEN '05' THEN 'Mei'
+               WHEN '06' THEN 'Juni'
+               WHEN '07' THEN 'Juli'
+               WHEN '08' THEN 'Agustus'
+               WHEN '09' THEN 'September'
+               WHEN '10' THEN 'Oktober'
+               WHEN '11' THEN 'November'
+               WHEN '12' THEN 'Desember'
+           END as bulan_nama
+    FROM pidsus_data {where_clause}
+    ORDER BY bulan_num, jenis_perkara
+    """
+    
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    
+    # Get available months for filter dropdown
+    month_query = f"""
+    SELECT DISTINCT strftime('%m', tanggal) as bulan_num,
+           CASE strftime('%m', tanggal)
+               WHEN '01' THEN 'Januari'
+               WHEN '02' THEN 'Februari'
+               WHEN '03' THEN 'Maret'
+               WHEN '04' THEN 'April'
+               WHEN '05' THEN 'Mei'
+               WHEN '06' THEN 'Juni'
+               WHEN '07' THEN 'Juli'
+               WHEN '08' THEN 'Agustus'
+               WHEN '09' THEN 'September'
+               WHEN '10' THEN 'Oktober'
+               WHEN '11' THEN 'November'
+               WHEN '12' THEN 'Desember'
+           END as bulan_nama
+    FROM pidsus_data
+    WHERE strftime('%Y', tanggal) = ?
+    ORDER BY bulan_num
+    """
+    
+    cursor.execute(month_query, [str(tahun)])
+    available_months = cursor.fetchall()
+    
+    conn.close()
+    
+    # Get report data using database function
+    result = get_pidsus_report_data_bulanan(tahun, bulan)
+    
+    # Calculate totals
+    total_keseluruhan = sum(item['JUMLAH'] for item in result['report_data'])
+    total_penyidikan = sum(item['PENYIDIKAN'] for item in result['report_data'])
+    total_penuntutan = sum(item['PENUNTUTAN'] for item in result['report_data'])
+    
+    # Current date for display
+    current_date = datetime.now().strftime("%d %B %Y")
+    
+    return render_template('laporan_pidsus_bulanan.html',
+                         report_data=result['report_data'],
+                         tahun=tahun,
+                         bulan=bulan,
+                         available_months=available_months,
+                         chart_data=result['chart_data'],
+                         total_keseluruhan=total_keseluruhan,
+                         total_penyidikan=total_penyidikan,
+                         total_penuntutan=total_penuntutan,
+                         current_date=current_date)
+
+@app.route('/laporan_pidsus_new')
+@login_required
+def laporan_pidsus_new():
+    # Get filter parameters
+    bulan = request.args.get('bulan', type=int)
+    tahun = request.args.get('tahun', type=int, default=2025)
+    periode_filter = request.args.get('periode')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    from datetime import datetime
+    import sqlite3
+    from collections import defaultdict
+    
+    # Get database connection
+    conn = sqlite3.connect('db/kejaksaan.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # Build query based on filters
+    where_conditions = []
+    params = []
+    
+    if bulan:
+        where_conditions.append("strftime('%m', tanggal) = ?")
+        params.append(f"{bulan:02d}")
+    
+    if tahun:
+        where_conditions.append("strftime('%Y', tanggal) = ?")
+        params.append(str(tahun))
+    
+    if periode_filter:
+        where_conditions.append("periode = ?")
+        params.append(periode_filter)
+    
+    if start_date:
+        where_conditions.append("tanggal >= ?")
+        params.append(start_date)
+    
+    if end_date:
+        where_conditions.append("tanggal <= ?")
+        params.append(end_date)
+    
+    where_clause = ""
+    if where_conditions:
+        where_clause = "WHERE " + " AND ".join(where_conditions)
+    
+    # Get data from pidsus_data table
+    query = f"""
+    SELECT periode, jenis_perkara, tanggal, penyidikan, penuntutan
+    FROM pidsus_data {where_clause}
+    ORDER BY tanggal DESC, periode, jenis_perkara
+    """
+    
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    
+    # Get unique periods for filter dropdown
+    cursor.execute("SELECT DISTINCT periode FROM pidsus_data ORDER BY periode")
+    periode_options = [row[0] for row in cursor.fetchall() if row[0]]
+    
+    conn.close()
+    
+    # Process data for report
+    data_summary = defaultdict(lambda: {
+        'PERIODE': '',
+        'JENIS_PERKARA': '',
+        'TANGGAL': '',
+        'TOTAL': 0,
+        'PENYIDIKAN': 0,
+        'PENUNTUTAN': 0
+    })
+    
+    for row in rows:
+        key = (row['periode'], row['jenis_perkara'], row['tanggal'])
+        data_summary[key]['PERIODE'] = row['periode']
+        data_summary[key]['JENIS_PERKARA'] = row['jenis_perkara']
+        data_summary[key]['TANGGAL'] = row['tanggal']
+        
+        # Map penyidikan and penuntutan to report columns
+        if row['penyidikan'] == '1':
+            data_summary[key]['PENYIDIKAN'] += 1
+        if row['penuntutan'] == '1':
+            data_summary[key]['PENUNTUTAN'] += 1
+        
+        data_summary[key]['TOTAL'] = (data_summary[key]['PENYIDIKAN'] +
+                                     data_summary[key]['PENUNTUTAN'])
+    
+    # Convert to list
+    report_data = list(data_summary.values())
+    
+    # Calculate totals
+    total_keseluruhan = sum(item['TOTAL'] for item in report_data)
+    total_penyidikan = sum(item['PENYIDIKAN'] for item in report_data)
+    total_penuntutan = sum(item['PENUNTUTAN'] for item in report_data)
+    
+    # Current date for display
+    current_date = datetime.now().strftime("%d %B %Y")
+    
+    return render_template('laporan_pidsus_new.html',
+                         report_data=report_data,
+                         bulan=bulan,
+                         tahun=tahun,
+                         periode_filter=periode_filter,
+                         periode_options=periode_options,
+                         start_date=start_date,
+                         end_date=end_date,
+                         total_keseluruhan=total_keseluruhan,
+                         total_penyidikan=total_penyidikan,
+                         total_penuntutan=total_penuntutan,
+                         current_date=current_date)
+
+@app.route('/export_pidsus_new_excel')
+@login_required
+def export_pidsus_new_excel():
+    # Get filter parameters from request
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    bulan = request.args.get('bulan', type=int)
+    tahun = request.args.get('tahun', type=int, default=2025)
+    periode_filter = request.args.get('periode')
+    jenis_perkara_filter = request.args.get('jenis_perkara')
+    
+    import sqlite3
+    from collections import defaultdict
+    
+    # Get database connection
+    conn = sqlite3.connect('db/kejaksaan.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # Build WHERE clause based on filters
+    where_conditions = []
+    params = []
+    
+    if start_date and end_date:
+        where_conditions.append("DATE(tanggal) BETWEEN ? AND ?")
+        params.extend([start_date, end_date])
+    elif bulan and tahun:
+        where_conditions.append("strftime('%m', tanggal) = ? AND strftime('%Y', tanggal) = ?")
+        params.extend([f"{bulan:02d}", str(tahun)])
+    elif tahun:
+        where_conditions.append("strftime('%Y', tanggal) = ?")
+        params.append(str(tahun))
+    
+    if periode_filter:
+        where_conditions.append("periode = ?")
+        params.append(periode_filter)
+    
+    if jenis_perkara_filter:
+        where_conditions.append("jenis_perkara = ?")
+        params.append(jenis_perkara_filter)
+    
+    where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+    
+    # Get filtered data
+    query = f"""
+    SELECT no, periode, tanggal, jenis_perkara, penyidikan, penuntutan, keterangan, created_at
+    FROM pidsus_data
+    WHERE {where_clause}
+    ORDER BY tanggal DESC, id DESC
+    """
+    
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    
+    # Convert to list of dictionaries
+    data = []
+    for row in rows:
+        data.append({
+            'No': row['no'],
+            'Periode': row['periode'],
+            'Tanggal Transaksi': row['tanggal'],
+            'Jenis Perkara': row['jenis_perkara'],
+            'Penyidikan': row['penyidikan'],
+            'Penuntutan': row['penuntutan'],
+            'Keterangan': row['keterangan'],
+            'Tanggal Input': row['created_at']
+        })
+    
+    conn.close()
+    
+    if not data:
+        flash('Tidak ada data untuk filter yang dipilih', 'warning')
+        return redirect(url_for('laporan_pidsus_new'))
+    
+    # Create DataFrame
+    df = pd.DataFrame(data)
+    
+    # Create Excel file with chart
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, sheet_name='Data PIDSUS', index=False, startrow=6)
+        
+        # Get workbook and worksheet
+        workbook = writer.book
+        worksheet = writer.sheets['Data PIDSUS']
+        
+        # Add title and filter info
+        worksheet['A1'] = 'LAPORAN PIDSUS PER TANGGAL'
+        worksheet['A1'].font = Font(size=16, bold=True)
+        worksheet['A2'] = f'Tahun: {tahun}'
+        if bulan:
+            bulan_nama = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                         'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][bulan]
+            worksheet['A2'] = f'Tahun: {tahun}, Bulan: {bulan_nama}'
+        if start_date and end_date:
+            worksheet['A3'] = f'Periode: {start_date} s/d {end_date}'
+        worksheet['A4'] = f'Total Data: {len(data)} record'
+        worksheet['A5'] = f'Dicetak pada: {datetime.now().strftime("%d %B %Y %H:%M")}'
+        
+        # Style header (row 7)
+        header_font = Font(bold=True, color='FFFFFF')
+        header_fill = PatternFill(start_color='4F81BD', end_color='4F81BD', fill_type='solid')
+        header_alignment = Alignment(horizontal='center', vertical='center')
+        
+        for cell in worksheet[7]:  # Header row
+            if cell.value:  # Only style cells with content
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_alignment
+        
+        # Auto-adjust column width
+        for column in worksheet.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min((max_length + 2), 50)  # Max width 50
+            worksheet.column_dimensions[column_letter].width = adjusted_width
+    
+    output.seek(0)
+    
+    # Generate filename with filter info
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filter_info = f"tahun_{tahun}"
+    if bulan:
+        filter_info += f"_bulan_{bulan}"
+    if start_date and end_date:
+        filter_info += f"_{start_date}_to_{end_date}"
+    
+    filename = f"laporan_pidsus_per_tanggal_{filter_info}_{timestamp}.xlsx"
+    
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=filename
+    )
+
+@app.route('/export_pidsus_new_word')
+@login_required
+def export_pidsus_new_word():
+    try:
+        from docx import Document
+        from docx.shared import Inches, Pt
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.enum.table import WD_TABLE_ALIGNMENT
+        import matplotlib.pyplot as plt
+        import matplotlib
+        matplotlib.use('Agg')  # Use non-interactive backend
+        import numpy as np
+        from collections import defaultdict
+    except ImportError as e:
+        flash(f'Library tidak tersedia: {str(e)}. Install dengan: pip install python-docx matplotlib', 'error')
+        return redirect(url_for('laporan_pidsus_new'))
+    
+    # Get filter parameters from request
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    bulan = request.args.get('bulan', type=int)
+    tahun = request.args.get('tahun', type=int, default=2025)
+    periode_filter = request.args.get('periode')
+    jenis_perkara_filter = request.args.get('jenis_perkara')
+    
+    import sqlite3
+    
+    # Get database connection
+    conn = sqlite3.connect('db/kejaksaan.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # Build WHERE clause based on filters
+    where_conditions = []
+    params = []
+    
+    if start_date and end_date:
+        where_conditions.append("DATE(tanggal) BETWEEN ? AND ?")
+        params.extend([start_date, end_date])
+    elif bulan and tahun:
+        where_conditions.append("strftime('%m', tanggal) = ? AND strftime('%Y', tanggal) = ?")
+        params.extend([f"{bulan:02d}", str(tahun)])
+    elif tahun:
+        where_conditions.append("strftime('%Y', tanggal) = ?")
+        params.append(str(tahun))
+    
+    if periode_filter:
+        where_conditions.append("periode = ?")
+        params.append(periode_filter)
+    
+    if jenis_perkara_filter:
+        where_conditions.append("jenis_perkara = ?")
+        params.append(jenis_perkara_filter)
+    
+    where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+    
+    # Get filtered data
+    query = f"""
+    SELECT no, periode, tanggal, jenis_perkara, penyidikan, penuntutan, keterangan, created_at
+    FROM pidsus_data
+    WHERE {where_clause}
+    ORDER BY tanggal DESC, id DESC
+    """
+    
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    
+    if not rows:
+        flash('Tidak ada data untuk filter yang dipilih', 'warning')
+        return redirect(url_for('laporan_pidsus_new'))
+    
+    # Process data for chart
+    chart_data = defaultdict(int)
+    all_jenis_perkara = ['KORUPSI', 'TINDAK PIDANA KORUPSI', 'PENYALAHGUNAAN WEWENANG', 'GRATIFIKASI', 'SUAP', 'PENGGELEMBUNGAN PAJAK', 'PERKARA LAINNYA']
+    
+    # Normalisasi jenis perkara
+    def normalize_jenis_perkara(jenis_text):
+        if not jenis_text:
+            return 'PERKARA LAINNYA'
+        jenis_upper = jenis_text.upper().strip()
+        if 'KORUPSI' in jenis_upper:
+            return 'KORUPSI'
+        elif 'TINDAK PIDANA KORUPSI' in jenis_upper:
+            return 'TINDAK PIDANA KORUPSI'
+        elif 'PENYALAHGUNAAN' in jenis_upper or 'WEWENANG' in jenis_upper:
+            return 'PENYALAHGUNAAN WEWENANG'
+        elif 'GRATIFIKASI' in jenis_upper:
+            return 'GRATIFIKASI'
+        elif 'SUAP' in jenis_upper:
+            return 'SUAP'
+        elif 'PAJAK' in jenis_upper:
+            return 'PENGGELEMBUNGAN PAJAK'
+        else:
+            return 'PERKARA LAINNYA'
+    
+    # Count data for chart
+    for row in rows:
+        normalized_jenis = normalize_jenis_perkara(row['jenis_perkara'])
+        chart_data[normalized_jenis] += 1
+    
+    # Ensure all categories are present
+    chart_values = [chart_data.get(jenis, 0) for jenis in all_jenis_perkara]
+    
+    # Create chart using matplotlib
+    plt.figure(figsize=(12, 8))
+    colors = ['#dc3545', '#28a745', '#ffc107', '#17a2b8', '#6f42c1', '#fd7e14', '#6c757d']
+    
+    bars = plt.bar(all_jenis_perkara, chart_values, color=colors)
+    plt.title('Distribusi Kasus per Jenis Perkara (Berdasarkan Filter Aktif)', fontsize=16, fontweight='bold', pad=20)
+    plt.xlabel('Jenis Perkara', fontsize=12, fontweight='bold')
+    plt.ylabel('Jumlah Kasus', fontsize=12, fontweight='bold')
+    plt.xticks(rotation=45, ha='right')
+    plt.grid(axis='y', alpha=0.3)
+    
+    # Add value labels on bars
+    for bar, value in zip(bars, chart_values):
+        if value > 0:
+            plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.1,
+                    str(value), ha='center', va='bottom', fontweight='bold')
+    
+    plt.tight_layout()
+    
+    # Save chart to temporary file
+    import tempfile
+    chart_temp = tempfile.NamedTemporaryFile(suffix='.png', delete=False)
+    plt.savefig(chart_temp.name, dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # Create Word document
+    doc = Document()
+    
+    # Set document margins
+    sections = doc.sections
+    for section in sections:
+        section.top_margin = Inches(1)
+        section.bottom_margin = Inches(1)
+        section.left_margin = Inches(1)
+        section.right_margin = Inches(1)
+    
+    # Add header
+    header_p = doc.add_paragraph()
+    header_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    header_run = header_p.add_run('LAPORAN PIDSUS PER TANGGAL')
+    header_run.font.size = Pt(16)
+    header_run.font.bold = True
+    
+    subheader_p = doc.add_paragraph()
+    subheader_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    subheader_run = subheader_p.add_run('KEJAKSAAN NEGERI')
+    subheader_run.font.size = Pt(12)
+    
+    doc.add_paragraph()  # Empty line
+    
+    # Add filter information
+    info_p = doc.add_paragraph()
+    info_text = f"Tahun: {tahun}"
+    if bulan:
+        bulan_nama = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][bulan]
+        info_text = f"Tahun: {tahun}, Bulan: {bulan_nama}"
+    if start_date and end_date:
+        info_text += f", Periode: {start_date} s/d {end_date}"
+    if periode_filter:
+        info_text += f", Periode: {periode_filter}"
+    if jenis_perkara_filter:
+        info_text += f", Jenis Perkara: {jenis_perkara_filter}"
+    
+    info_run = info_p.add_run(f"Informasi Filter: {info_text}")
+    info_run.font.bold = True
+    
+    total_p = doc.add_paragraph()
+    total_run = total_p.add_run(f"Total Data: {len(rows)} record")
+    total_run.font.bold = True
+    
+    date_p = doc.add_paragraph()
+    date_run = date_p.add_run(f"Dicetak pada: {datetime.now().strftime('%d %B %Y %H:%M')}")
+    date_run.font.bold = True
+    
+    doc.add_paragraph()  # Empty line
+    
+    # Add chart
+    chart_p = doc.add_paragraph()
+    chart_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    chart_title = chart_p.add_run('Grafik Distribusi Jenis Perkara')
+    chart_title.font.size = Pt(14)
+    chart_title.font.bold = True
+    
+    chart_para = doc.add_paragraph()
+    chart_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    doc.add_picture(chart_temp.name, width=Inches(6))
+    
+    doc.add_paragraph()  # Empty line
+    
+    # Add table
+    table = doc.add_table(rows=1, cols=7)
+    table.style = 'Table Grid'
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    
+    # Set header row
+    header_cells = table.rows[0].cells
+    headers = ['No', 'Periode', 'Tanggal', 'Jenis Perkara', 'Penyidikan', 'Penuntutan', 'Keterangan']
+    
+    for i, header in enumerate(headers):
+        header_cells[i].text = header
+        # Make header bold
+        for paragraph in header_cells[i].paragraphs:
+            for run in paragraph.runs:
+                run.font.bold = True
+        header_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Add data rows
+    for row in rows:
+        row_cells = table.add_row().cells
+        row_cells[0].text = str(row['no'])
+        row_cells[1].text = str(row['periode'])
+        row_cells[2].text = str(row['tanggal'])
+        row_cells[3].text = str(row['jenis_perkara'])
+        row_cells[4].text = str(row['penyidikan'])
+        row_cells[5].text = str(row['penuntutan'])
+        row_cells[6].text = str(row['keterangan'])
+        
+        # Center align some columns
+        row_cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        row_cells[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        row_cells[2].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Set column widths
+    widths = [Inches(0.5), Inches(1), Inches(1), Inches(1.5), Inches(1.5), Inches(1.5), Inches(2)]
+    for i, width in enumerate(widths):
+        for row in table.rows:
+            row.cells[i].width = width
+    
+    # Add total row
+    total_row = table.add_row().cells
+    total_row[0].text = "TOTAL KESELURUHAN"
+    total_row[1].text = str(len(rows))
+    
+    # Make total row bold and merge cells
+    for i in range(2):
+        for paragraph in total_row[i].paragraphs:
+            for run in paragraph.runs:
+                run.font.bold = True
+        total_row[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Merge remaining cells in total row
+    for i in range(2, 7):
+        total_row[i].text = ""
+    
+    # Clean up temporary chart file
+    import os
+    os.unlink(chart_temp.name)
+    
+    # Save to BytesIO
+    output = io.BytesIO()
+    doc.save(output)
+    output.seek(0)
+    
+    # Generate filename with filter info
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filter_info = f"tahun_{tahun}"
+    if bulan:
+        filter_info += f"_bulan_{bulan}"
+    if start_date and end_date:
+        filter_info += f"_{start_date}_to_{end_date}"
+    
+    filename = f"laporan_pidsus_per_tanggal_{filter_info}_{timestamp}.docx"
+    
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        as_attachment=True,
+        download_name=filename
+    )
 
 if __name__ == '__main__':
     print(f"Database initialized at: {get_database_stats()['database_path']}")

@@ -85,6 +85,105 @@
                     </div>
                 </div>
                 
+                <!-- PIDSUS Reports Section -->
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h4><i class="fas fa-gavel"></i> Pilihan Laporan PIDSUS</h4>
+                            </div>
+                            <div class="card-body">
+                                <p class="lead">Silakan pilih jenis laporan PIDSUS yang ingin Anda lihat:</p>
+                                
+                                <div class="row mt-4">
+                                    <!-- Laporan PIDSUS Klasik -->
+                                    <div class="col-md-4">
+                                        <div class="card h-100 border-danger">
+                                            <div class="card-header bg-danger text-white">
+                                                <h5><i class="fas fa-chart-bar"></i> Laporan PIDSUS Klasik</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <ul class="list-unstyled">
+                                                    <li><i class="fas fa-check text-success"></i> Tampilan laporan tradisional</li>
+                                                    <li><i class="fas fa-check text-success"></i> Filter berdasarkan bulan dan tahun</li>
+                                                    <li><i class="fas fa-check text-success"></i> Grafik analisis lengkap</li>
+                                                    <li><i class="fas fa-check text-success"></i> Export ke Excel</li>
+                                                    <li><i class="fas fa-check text-success"></i> Format laporan standar</li>
+                                                </ul>
+                                                <div class="text-center mt-4">
+                                                    <a href="{{ url_for('laporan_pidsus') }}" class="btn btn-danger btn-lg">
+                                                        <i class="fas fa-eye"></i> Lihat Laporan Klasik
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Laporan PIDSUS Baru -->
+                                    <div class="col-md-4">
+                                        <div class="card h-100 border-success">
+                                            <div class="card-header bg-success text-white">
+                                                <h5><i class="fas fa-chart-line"></i> Laporan PIDSUS per Tanggal</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <ul class="list-unstyled">
+                                                    <li><i class="fas fa-check text-success"></i> Design modern dan responsif</li>
+                                                    <li><i class="fas fa-check text-success"></i> Tabel dengan header teks hitam</li>
+                                                    <li><i class="fas fa-check text-success"></i> Histogram jenis perkara</li>
+                                                    <li><i class="fas fa-check text-success"></i> Filter berdasarkan rentang tanggal</li>
+                                                    <li><i class="fas fa-check text-success"></i> Tampilan tanggal per transaksi</li>
+                                                    <li><i class="fas fa-check text-success"></i> Statistik cards informatif</li>
+                                                </ul>
+                                                <div class="text-center mt-4">
+                                                    <a href="{{ url_for('laporan_pidsus_new') }}" class="btn btn-success btn-lg">
+                                                        <i class="fas fa-calendar-alt"></i> Lihat Laporan per Tanggal
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Laporan PIDSUS Periode Bulanan -->
+                                    <div class="col-md-4">
+                                        <div class="card h-100 border-warning">
+                                            <div class="card-header bg-warning text-dark">
+                                                <h5><i class="fas fa-calendar-alt"></i> Laporan Periode Bulanan</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <ul class="list-unstyled">
+                                                    <li><i class="fas fa-check text-success"></i> Format tabel periode bulanan</li>
+                                                    <li><i class="fas fa-check text-success"></i> Header multi-level yang rapi</li>
+                                                    <li><i class="fas fa-check text-success"></i> Grouping per bulan dan jenis perkara</li>
+                                                    <li><i class="fas fa-check text-success"></i> Chart trend bulanan</li>
+                                                    <li><i class="fas fa-check text-success"></i> Statistik per tahapan</li>
+                                                    <li><i class="fas fa-star text-warning"></i> <strong>Format Terbaru</strong></li>
+                                                </ul>
+                                                <div class="text-center mt-4">
+                                                    <a href="{{ url_for('laporan_pidsus_bulanan') }}" class="btn btn-warning btn-lg text-dark">
+                                                        <i class="fas fa-calendar"></i> Lihat Laporan Bulanan
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Navigation for PIDSUS -->
+                                <div class="row mt-4">
+                                    <div class="col-md-12 text-center">
+                                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                                            <i class="fas fa-arrow-left"></i> Kembali ke Beranda
+                                        </a>
+                                        <a href="{{ url_for('view_pidsus') }}" class="btn btn-outline-danger">
+                                            <i class="fas fa-table"></i> Lihat Data PIDSUS
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Info Section -->
                 <div class="row mt-5">
                     <div class="col-md-12">

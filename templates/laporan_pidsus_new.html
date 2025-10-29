@@ -1,0 +1,714 @@
+{% extends "base.html" %}
+
+{% block title %}Laporan PIDSUS per Tanggal - Aplikasi Data PIDUM & PIDSUS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4><i class="fas fa-chart-line"></i> Laporan PIDSUS per Tanggal</h4>
+                <div>
+                    <button onclick="exportToExcel()" class="btn btn-success btn-sm">
+                        <i class="fas fa-file-excel"></i> Export Excel
+                    </button>
+                    <button onclick="exportToWord()" class="btn btn-primary btn-sm">
+                        <i class="fas fa-file-word"></i> Export Word
+                    </button>
+                    <button onclick="printReport()" class="btn btn-info btn-sm">
+                        <i class="fas fa-print"></i> Print
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Filter Section -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <form method="GET" class="row g-3">
+                            <div class="col-md-2">
+                                <label for="bulan" class="form-label">Bulan</label>
+                                <select name="bulan" id="bulan" class="form-select">
+                                    <option value="">Semua Bulan</option>
+                                    {% for i in range(1, 13) %}
+                                    <option value="{{ i }}" {% if bulan and bulan == i %}selected{% endif %}>
+                                        {{ ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+                                             'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][i] }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="tahun" class="form-label">Tahun</label>
+                                <select name="tahun" id="tahun" class="form-select">
+                                    {% for year in range(2023, 2027) %}
+                                    <option value="{{ year }}" {% if tahun and tahun == year %}selected{% endif %}>{{ year }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="periode" class="form-label">Periode</label>
+                                <select name="periode" id="periode" class="form-select">
+                                    <option value="">Semua Periode</option>
+                                    {% for periode_opt in periode_options %}
+                                    <option value="{{ periode_opt }}" {% if periode_filter and periode_filter == periode_opt %}selected{% endif %}>{{ periode_opt }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="start_date" class="form-label">Dari Tanggal</label>
+                                <input type="date" name="start_date" id="start_date" class="form-control" value="{{ start_date or '' }}">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="end_date" class="form-label">Sampai Tanggal</label>
+                                <input type="date" name="end_date" id="end_date" class="form-control" value="{{ end_date or '' }}">
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary me-2">
+                                    <i class="fas fa-filter"></i> Filter
+                                </button>
+                                <a href="{{ url_for('laporan_pidsus_new') }}" class="btn btn-secondary">
+                                    <i class="fas fa-refresh"></i> Reset
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Summary Info -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle"></i> Informasi Laporan</h6>
+                            <p class="mb-0">
+                                <strong>Periode:</strong> 
+                                {% if bulan %}
+                                    {{ ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+                                         'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][bulan] }}
+                                {% else %}
+                                    Semua Bulan
+                                {% endif %}
+                                {{ tahun if tahun else '2025' }}
+                                {% if start_date or end_date %}
+                                    | <strong>Filter Tanggal:</strong>
+                                    {% if start_date %}{{ start_date }}{% endif %}
+                                    {% if start_date and end_date %} s/d {% endif %}
+                                    {% if end_date %}{{ end_date }}{% endif %}
+                                {% endif %}
+                                | <strong>Total Kasus:</strong> {{ total_keseluruhan }} 
+                                | <strong>Data per:</strong> {{ current_date }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table Section -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5><i class="fas fa-table"></i> Tabel Laporan</h5>
+                            <div class="d-flex align-items-center">
+                                <label for="entriesPerPage" class="form-label me-2 mb-0">Tampilkan:</label>
+                                <select id="entriesPerPage" class="form-select form-select-sm" style="width: auto;">
+                                    <option value="10">10</option>
+                                    <option value="20">20</option>
+                                    <option value="30">30</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                                <span class="ms-2">entri</span>
+                            </div>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped" id="dataTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="4%" style="color: black;">No</th>
+                                        <th width="12%" style="color: black;">Periode</th>
+                                        <th width="12%" style="color: black;">Tanggal</th>
+                                        <th width="20%" style="color: black;">Jenis Perkara</th>
+                                        <th width="8%" style="color: black;">Total</th>
+                                        <th width="12%" style="color: black;">Penyidikan</th>
+                                        <th width="12%" style="color: black;">Penuntutan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tableBody">
+                                    {% for item in report_data %}
+                                    <tr>
+                                        <td class="text-center">{{ loop.index }}</td>
+                                        <td>
+                                            {% if item.PERIODE %}
+                                                <span class="badge bg-primary">{{ item.PERIODE }}</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Semua</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.TANGGAL %}
+                                                <span class="badge bg-secondary">{{ item.TANGGAL }}</span>
+                                            {% else %}
+                                                <span class="badge bg-light text-dark">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ item.JENIS_PERKARA }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <strong class="text-primary">{{ item.TOTAL }}</strong>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-success">{{ item.PENYIDIKAN }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-warning">{{ item.PENUNTUTAN }}</span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot class="table-secondary">
+                                    <tr>
+                                        <th colspan="4" class="text-center">TOTAL KESELURUHAN</th>
+                                        <th class="text-center"><span id="totalData">{{ total_keseluruhan }}</span></th>
+                                        <th class="text-center">{{ total_penyidikan }}</th>
+                                        <th class="text-center">{{ total_penuntutan }}</th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination Controls -->
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <div id="paginationInfo" class="text-muted">
+                                Menampilkan 1 sampai 10 dari {{ report_data|length }} entri
+                            </div>
+                            <nav aria-label="Table pagination">
+                                <ul class="pagination pagination-sm mb-0" id="paginationControls">
+                                    <!-- Pagination akan di-generate oleh JavaScript -->
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chart Section -->
+                <div class="row mt-5">
+                    <div class="col-md-12">
+                        <h5><i class="fas fa-chart-bar"></i> Grafik</h5>
+                        
+                        <!-- Chart by Jenis Perkara -->
+                        <div class="row justify-content-center">
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6>Distribusi per Jenis Perkara</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <canvas id="jenisPerkaraChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistics Cards -->
+                <div class="row mt-4">
+                    <div class="col-md-4">
+                        <div class="card text-white bg-primary">
+                            <div class="card-body text-center">
+                                <h4>{{ total_keseluruhan }}</h4>
+                                <p>Total Kasus</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-white bg-success">
+                            <div class="card-body text-center">
+                                <h4>{{ total_penyidikan }}</h4>
+                                <p>Penyidikan</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-white bg-warning">
+                            <div class="card-body text-center">
+                                <h4>{{ total_penuntutan }}</h4>
+                                <p>Penuntutan</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Global variables
+let currentPage = 1;
+let rowsPerPage = 10;
+let totalRows = 0;
+let allTableRows = [];
+
+// Wait for DOM to be fully loaded
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing...');
+    initPagination();
+    initChart();
+});
+
+// Data from backend
+var reportDataStr = '{{ report_data|tojson|safe }}';
+const reportData = JSON.parse(reportDataStr);
+
+function initPagination() {
+    console.log('Initializing pagination...');
+    
+    // Get table body and all rows
+    const tableBody = document.getElementById('tableBody');
+    if (!tableBody) {
+        console.error('Table body not found');
+        return;
+    }
+    
+    allTableRows = Array.from(tableBody.querySelectorAll('tr'));
+    totalRows = allTableRows.length;
+    
+    console.log('Found', totalRows, 'rows');
+    
+    // Setup entries per page selector
+    const entriesSelect = document.getElementById('entriesPerPage');
+    if (entriesSelect) {
+        entriesSelect.addEventListener('change', function() {
+            rowsPerPage = parseInt(this.value);
+            currentPage = 1;
+            showPage();
+        });
+    }
+    
+    // Initial display
+    showPage();
+}
+
+function showPage() {
+    console.log('Showing page', currentPage, 'with', rowsPerPage, 'rows per page');
+    
+    if (totalRows === 0) return;
+    
+    // Calculate start and end indices
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    
+    // Hide all rows first, then show current page rows
+    allTableRows.forEach((row, index) => {
+        if (index >= startIndex && index < endIndex) {
+            row.style.display = '';
+            // Update row number
+            const numberCell = row.querySelector('td:first-child');
+            if (numberCell) {
+                numberCell.textContent = index + 1;
+            }
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    // Update pagination info and controls
+    updatePaginationInfo();
+    updatePaginationControls();
+}
+
+function updatePaginationInfo() {
+    const start = (currentPage - 1) * rowsPerPage + 1;
+    const end = Math.min(currentPage * rowsPerPage, totalRows);
+    
+    const infoElement = document.getElementById('paginationInfo');
+    if (infoElement) {
+        infoElement.textContent = `Menampilkan ${start} sampai ${end} dari ${totalRows} entri`;
+    }
+}
+
+function updatePaginationControls() {
+    const totalPages = Math.ceil(totalRows / rowsPerPage);
+    const paginationControls = document.getElementById('paginationControls');
+    
+    if (!paginationControls) return;
+    
+    paginationControls.innerHTML = '';
+    
+    // Previous button
+    const prevButton = createPageButton('«', currentPage - 1, currentPage === 1);
+    paginationControls.appendChild(prevButton);
+    
+    // Page numbers (simplified approach)
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    // Adjust start if we're near the end
+    if (endPage - startPage < maxVisiblePages - 1) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    // Add first page and dots if needed
+    if (startPage > 1) {
+        paginationControls.appendChild(createPageButton('1', 1));
+        if (startPage > 2) {
+            const dots = document.createElement('li');
+            dots.className = 'page-item disabled';
+            dots.innerHTML = '<span class="page-link">...</span>';
+            paginationControls.appendChild(dots);
+        }
+    }
+    
+    // Add visible page numbers
+    for (let i = startPage; i <= endPage; i++) {
+        const pageButton = createPageButton(i, i, false, i === currentPage);
+        paginationControls.appendChild(pageButton);
+    }
+    
+    // Add last page and dots if needed
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            const dots = document.createElement('li');
+            dots.className = 'page-item disabled';
+            dots.innerHTML = '<span class="page-link">...</span>';
+            paginationControls.appendChild(dots);
+        }
+        paginationControls.appendChild(createPageButton(totalPages, totalPages));
+    }
+    
+    // Next button
+    const nextButton = createPageButton('»', currentPage + 1, currentPage === totalPages);
+    paginationControls.appendChild(nextButton);
+}
+
+function createPageButton(text, page, disabled = false, active = false) {
+    const li = document.createElement('li');
+    li.className = `page-item ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}`;
+    
+    const link = document.createElement('a');
+    link.className = 'page-link';
+    link.href = '#';
+    link.textContent = text;
+    
+    if (!disabled) {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const totalPages = Math.ceil(totalRows / rowsPerPage);
+            if (page >= 1 && page <= totalPages) {
+                currentPage = page;
+                showPage();
+            }
+        });
+    }
+    
+    li.appendChild(link);
+    return li;
+}
+
+function initChart() {
+    console.log('Initializing chart...');
+    
+    const chartCanvas = document.getElementById('jenisPerkaraChart');
+    if (!chartCanvas) {
+        console.error('Chart canvas not found');
+        return;
+    }
+    
+    // Predefined jenis perkara list (all must be shown)
+    const jenisPerkaraList = [
+        'KORUPSI',
+        'TINDAK PIDANA KORUPSI', 
+        'PENYALAHGUNAAN WEWENANG',
+        'GRATIFIKASI',
+        'SUAP',
+        'PENGGELEMBUNGAN PAJAK',
+        'PERKARA LAINNYA'
+    ];
+    
+    // Initialize all categories with 0
+    const chartData = {};
+    jenisPerkaraList.forEach(jenis => {
+        chartData[jenis] = 0;
+    });
+    
+    // Process report data and map to categories
+    if (reportData && Array.isArray(reportData)) {
+        reportData.forEach(item => {
+            if (item && item.JENIS_PERKARA && typeof item.TOTAL !== 'undefined') {
+                const jenis = item.JENIS_PERKARA.toUpperCase();
+                let mappedJenis = 'PERKARA LAINNYA'; // default category
+                
+                // Map to specific categories
+                if (jenis.includes('KORUPSI')) {
+                    mappedJenis = 'KORUPSI';
+                } else if (jenis.includes('TINDAK PIDANA KORUPSI')) {
+                    mappedJenis = 'TINDAK PIDANA KORUPSI';
+                } else if (jenis.includes('PENYALAHGUNAAN') || jenis.includes('WEWENANG')) {
+                    mappedJenis = 'PENYALAHGUNAAN WEWENANG';
+                } else if (jenis.includes('GRATIFIKASI')) {
+                    mappedJenis = 'GRATIFIKASI';
+                } else if (jenis.includes('SUAP')) {
+                    mappedJenis = 'SUAP';
+                } else if (jenis.includes('PAJAK')) {
+                    mappedJenis = 'PENGGELEMBUNGAN PAJAK';
+                }
+                
+                chartData[mappedJenis] += parseInt(item.TOTAL) || 0;
+            }
+        });
+    }
+    
+    // Prepare chart configuration
+    const labels = jenisPerkaraList;
+    const values = jenisPerkaraList.map(jenis => chartData[jenis]);
+    const colors = [
+        '#FF6384', // Korupsi - Red
+        '#36A2EB', // Tindak Pidana Korupsi - Blue
+        '#FFCE56', // Penyalahgunaan Wewenang - Yellow
+        '#4BC0C0', // Gratifikasi - Teal
+        '#9966FF', // Suap - Purple
+        '#FF9F40', // Penggelapan Pajak - Orange
+        '#96CEB4'  // Perkara Lainnya - Green
+    ];
+    
+    console.log('Chart labels:', labels);
+    console.log('Chart values:', values);
+    
+    // Create the chart
+    try {
+        // Plugin untuk menampilkan label angka di atas setiap bar
+        const valueLabelPlugin = {
+            id: 'valueLabelPlugin',
+            afterDatasetsDraw(chart, args, pluginOptions) {
+                const {ctx, data, chartArea} = chart;
+                const dataset = chart.data.datasets[0];
+                if (!dataset) return;
+                ctx.save();
+                ctx.fillStyle = pluginOptions && pluginOptions.color ? pluginOptions.color : '#000';
+                ctx.font = (pluginOptions && pluginOptions.font) || '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                const meta = chart.getDatasetMeta(0);
+                meta.data.forEach((bar, index) => {
+                    const value = dataset.data[index];
+                    if (value === null || typeof value === 'undefined') return;
+                    const x = bar.x;
+                    const y = bar.y - 4; // sedikit di atas bar
+                    ctx.fillText(String(value), x, y);
+                });
+                ctx.restore();
+            }
+        };
+
+        window.chartInstance = new Chart(chartCanvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Jumlah Kasus',
+                    data: values,
+                    backgroundColor: colors,
+                    borderColor: colors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Distribusi Kasus per Jenis Perkara (Berdasarkan Filter Aktif)'
+                    },
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `Jumlah Kasus: ${context.parsed.y}`;
+                            }
+                        }
+                    },
+                    // Opsi plugin label
+                    valueLabelPlugin: {
+                        color: '#000',
+                        font: '12px Arial'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: Math.max(...values) + 10,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45
+                        }
+                    }
+                }
+            },
+            plugins: [valueLabelPlugin]
+        });
+        console.log('Chart created successfully');
+    } catch (error) {
+        console.error('Error creating chart:', error);
+    }
+}
+
+// Function untuk export ke Excel dengan filter
+function exportToExcel() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const exportUrl = new URL('/export_pidsus_new_excel', window.location.origin);
+    
+    // Copy all current URL parameters to export URL
+    for (const [key, value] of urlParams) {
+        exportUrl.searchParams.set(key, value);
+    }
+    
+    // Open export URL
+    window.open(exportUrl.toString(), '_blank');
+}
+
+// Function untuk export ke Word dengan filter
+function exportToWord() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const exportUrl = new URL('/export_pidsus_new_word', window.location.origin);
+    
+    // Copy all current URL parameters to export URL
+    for (const [key, value] of urlParams) {
+        exportUrl.searchParams.set(key, value);
+    }
+    
+    // Open export URL
+    window.open(exportUrl.toString(), '_blank');
+}
+
+// Function untuk print dengan grafik
+function printReport() {
+    // Convert chart to image
+    const chart = window.chartInstance;
+    if (chart) {
+        chart.options.animation = false;
+        chart.update();
+        
+        const chartCanvas = document.getElementById('jenisPerkaraChart');
+        const chartImage = chartCanvas.toDataURL('image/png');
+        
+        // Create print content
+        const printContent = `
+            <html>
+            <head>
+                <title>Laporan PIDSUS per Tanggal</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 20px; }
+                    .header { text-align: center; margin-bottom: 20px; }
+                    .info { margin-bottom: 20px; padding: 10px; background: #f5f5f5; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
+                    th { background-color: #f2f2f2; font-weight: bold; }
+                    .chart { text-align: center; margin: 20px 0; }
+                    .chart img { max-width: 100%; height: auto; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h2>LAPORAN PIDSUS PER TANGGAL</h2>
+                    <p>KEJAKSAAN NEGERI</p>
+                </div>
+                
+                <div class="info">
+                    <strong>Informasi Filter:</strong><br>
+                    ${getFilterInfo()}
+                    <br><strong>Total Data:</strong> ${document.getElementById('totalData').textContent} record
+                    <br><strong>Dicetak pada:</strong> ${new Date().toLocaleDateString('id-ID', {
+                        day: 'numeric', month: 'long', year: 'numeric', 
+                        hour: '2-digit', minute: '2-digit'
+                    })}
+                </div>
+                
+                <div class="chart">
+                    <h3>Grafik Distribusi Jenis Perkara</h3>
+                    <img src="${chartImage}" alt="Chart Jenis Perkara" />
+                </div>
+                
+                ${document.getElementById('dataTable').outerHTML}
+            </body>
+            </html>
+        `;
+        
+        // Open print window
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(printContent);
+        printWindow.document.close();
+        
+        // Wait for images to load then print
+        setTimeout(() => {
+            printWindow.print();
+        }, 1000);
+    } else {
+        // Fallback to regular print if chart not available
+        window.print();
+    }
+}
+
+// Helper function to get filter info for print
+function getFilterInfo() {
+    const urlParams = new URLSearchParams(window.location.search);
+    let filterInfo = [];
+    
+    if (urlParams.get('tahun')) {
+        filterInfo.push(`Tahun: ${urlParams.get('tahun')}`);
+    }
+    if (urlParams.get('bulan')) {
+        const bulanNames = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+                           'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        filterInfo.push(`Bulan: ${bulanNames[parseInt(urlParams.get('bulan'))]}`);
+    }
+    if (urlParams.get('start_date') && urlParams.get('end_date')) {
+        filterInfo.push(`Periode: ${urlParams.get('start_date')} s/d ${urlParams.get('end_date')}`);
+    }
+    if (urlParams.get('periode')) {
+        filterInfo.push(`Periode: ${urlParams.get('periode')}`);
+    }
+    if (urlParams.get('jenis_perkara')) {
+        filterInfo.push(`Jenis Perkara: ${urlParams.get('jenis_perkara')}`);
+    }
+    if (urlParams.get('tahapan')) {
+        filterInfo.push(`Tahapan: ${urlParams.get('tahapan')}`);
+    }
+    
+    return filterInfo.length > 0 ? filterInfo.join(', ') : 'Semua Data';
+}
+</script>
+
+<style>
+@media print {
+    .btn, .card-header .btn-group, .no-print {
+        display: none !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    .table {
+        font-size: 12px;
+    }
+    
+    .badge {
+        color: #000 !important;
+        background-color: #fff !important;
+        border: 1px solid #000 !important;
+    }
+}
+</style>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Data PIDSUS - Aplikasi Data PIDUM & PIDSUS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-edit"></i> Edit Data PIDSUS</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('edit_pidsus', item_id=data.id) }}">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="no" class="form-label">Nomor</label>
+                            <input type="text" class="form-control" id="no" name="no" value="{{ data.no }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="periode" class="form-label">Periode</label>
+                            <input type="text" class="form-control" id="periode" name="periode" value="{{ data.periode }}" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="tanggal" class="form-label">Tanggal</label>
+                            <input type="date" class="form-control" id="tanggal" name="tanggal" value="{{ data.tanggal }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="jenis_perkara" class="form-label">Jenis Perkara</label>
+                            <select class="form-control" id="jenis_perkara" name="jenis_perkara" required>
+                                <option value="{{ data['jenis_perkara'] }}" selected>{{ data['jenis_perkara'] }}</option>
+                                <option value="KORUPSI">KORUPSI</option>
+                                <option value="TINDAK PIDANA KORUPSI">TINDAK PIDANA KORUPSI</option>
+                                <option value="PENYALAHGUNAAN WEWENANG">PENYALAHGUNAAN WEWENANG</option>
+                                <option value="GRATIFIKASI">GRATIFIKASI</option>
+                                <option value="SUAP">SUAP</option>
+                                <option value="PENGGELEMBUNGAN PAJAK">PENGGELEMBUNGAN PAJAK</option>
+                                <option value="PERKARA LAINNYA">PERKARA LAINNYA</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="penyidikan" class="form-label">Penyidikan</label>
+                            <select class="form-control" id="penyidikan" name="penyidikan" required>
+                                <option value="1" {% if data.penyidikan == '1' %}selected{% endif %}>Ya</option>
+                                <option value="0" {% if data.penyidikan == '0' %}selected{% endif %}>Tidak</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="penuntutan" class="form-label">Penuntutan</label>
+                            <select class="form-control" id="penuntutan" name="penuntutan" required>
+                                <option value="1" {% if data.penuntutan == '1' %}selected{% endif %}>Ya</option>
+                                <option value="0" {% if data.penuntutan == '0' %}selected{% endif %}>Tidak</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="keterangan" class="form-label">Keterangan</label>
+                            <textarea class="form-control" id="keterangan" name="keterangan" rows="3">{{ data.keterangan }}</textarea>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="d-flex justify-content-between">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Simpan Perubahan
+                                </button>
+                                <a href="{{ url_for('view_pidsus') }}" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Batal
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-format tanggal to YYYY-MM-DD format
+    const tanggalInput = document.getElementById('tanggal');
+    if (tanggalInput) {
+        tanggalInput.addEventListener('change', function() {
+            const value = this.value;
+            if (value && value.length === 10) {
+                // Format YYYY-MM-DD to YYYY-MM-DD if already in correct format
+                const year = value.substring(0, 4);
+                const month = value.substring(5, 7);
+                const day = value.substring(8, 10);
+                this.value = `${year}-${month}-${day}`;
+            } else if (value && value.length === 8) {
+                // Format YYYYMMDD to YYYY-MM-DD
+                const year = value.substring(0, 4);
+                const month = value.substring(4, 6);
+                const day = value.substring(6, 8);
+                this.value = `${year}-${month}-${day}`;
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

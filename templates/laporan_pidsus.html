@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}Laporan PIDSUS - Aplikasi Data PIDUM & PIDSUS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4><i class="fas fa-chart-bar"></i> Laporan PIDSUS - {{ bulan_nama }} {{ tahun }}</h4>
+            </div>
+            <div class="card-body">
+                <!-- Filter Section -->
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <form method="GET" action="{{ url_for('laporan_pidsus') }}" class="row g-2 align-items-end">
+                            <div class="col-md-3">
+                                <label class="form-label">Bulan</label>
+                                <select name="bulan" class="form-select form-select-sm">
+                                    <option value="" {% if not bulan %}selected{% endif %}>Semua Bulan</option>
+                                    {% for i in range(1,13) %}
+                                    <option value="{{ i }}" {% if bulan == i %}selected{% endif %}>
+                                        {{ ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][i] }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Tahun</label>
+                                <select name="tahun" class="form-select form-select-sm">
+                                    {% for year in range(2020, 2031) %}
+                                    <option value="{{ year }}" {% if tahun == year %}selected{% endif %}>{{ year }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Dari Tanggal</label>
+                                <input type="date" name="start_date" class="form-control form-control-sm" value="{{ start_date or '' }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Sampai Tanggal</label>
+                                <input type="date" name="end_date" class="form-control form-control-sm" value="{{ end_date or '' }}">
+                            </div>
+                            <div class="col-md-1 d-grid">
+                                <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i> Tampilkan</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <!-- Table Report -->
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead class="table-dark">
+                            <tr style="background-color: #e9ecef !important;">
+                                <th rowspan="2" style="color: #000000 !important; vertical-align: middle; text-align: center;">NO</th>
+                                <th rowspan="2" style="color: #000000 !important; vertical-align: middle; text-align: center;">BULAN</th>
+                                <th rowspan="2" style="color: #000000 !important; vertical-align: middle; text-align: center;">JENIS PERKARA</th>
+                                <th rowspan="2" style="color: #000000 !important; vertical-align: middle; text-align: center;">JUMLAH</th>
+                                <th colspan="2" style="color: #000000 !important; text-align: center;">TAHAPAN PENANGANAN</th>
+                            </tr>
+                            <tr style="background-color: #e9ecef !important;">
+                                <th style="color: #000000 !important; text-align: center;">PENYIDIKAN</th>
+                                <th style="color: #000000 !important; text-align: center;">PENUNTUTAN</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in report_data %}
+                            <tr>
+                                <td style="text-align: center;">{{ item.NO }}</td>
+                                <td style="text-align: center;">{{ item.BULAN.upper() }}</td>
+                                <td>{{ item.jenis_perkara }}</td>
+                                <td style="text-align: center;">{{ item.JUMLAH }}</td>
+                                <td style="text-align: center;">{{ item.PENYIDIKAN }}</td>
+                                <td style="text-align: center;">{{ item.PENUNTUTAN }}</td>
+                            </tr>
+                            {% endfor %}
+                            <!-- Totals Row -->
+                            <tr class="table-warning">
+                                <td colspan="3" style="text-align: center; font-weight: bold;">TOTAL</td>
+                                <td style="text-align: center; font-weight: bold;">{{ total_keseluruhan }}</td>
+                                <td style="text-align: center; font-weight: bold;">{{ total_penyidikan }}</td>
+                                <td style="text-align: center; font-weight: bold;">{{ total_penuntutan }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Chart Section -->
+                <div class="mt-4">
+                    <h5><i class="fas fa-chart-bar"></i> Grafik PIDSUS</h5>
+                    <div class="card">
+                        <div class="card-body">
+                            <canvas id="pidsusChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{{ url_for('view_pidsus') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Kembali ke Data PIDSUS
+                    </a>
+                    <div>
+                        <a href="{{ url_for('export_pidsus_excel') }}?bulan={{ bulan }}&tahun={{ tahun }}" class="btn btn-success">
+                            <i class="fas fa-file-excel"></i> Export Excel
+                        </a>
+                        <button onclick="printReport()" class="btn btn-primary">
+                            <i class="fas fa-print"></i> Print Laporan
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Define all categories that should always appear in the chart
+    const allCategories = ['KORUPSI', 'TINDAK PIDANA KORUPSI', 'PENYALAHGUNAAN WEWENANG', 'GRATIFIKASI', 'SUAP', 'PENGGELEMBUNGAN PAJAK', 'PERKARA LAINNYA'];
+    
+    const tableRows = Array.from(document.querySelectorAll('table tbody tr'));
+    // Ambil data dari tabel agar sinkron dengan tampilan
+    const labels = [];
+    const values = [];
+    
+    // Create a map of existing data from the table
+    const dataMap = {};
+    tableRows.forEach(row => {
+        const cols = row.querySelectorAll('td');
+        if (!cols || cols.length < 6) return;
+        const jenisPerkara = cols[2].textContent.trim();
+        const jumlah = parseInt(cols[3].textContent.trim(), 10);
+        if (jenisPerkara && !isNaN(jumlah)) {
+            dataMap[jenisPerkara] = jumlah;
+        }
+    });
+    
+    // Ensure all categories are included in the chart, even with zero values
+    allCategories.forEach(category => {
+        labels.push(category);
+        values.push(dataMap[category] || 0);
+    });
+
+    const ctx = document.getElementById('pidsusChart').getContext('2d');
+
+    // Plugin label nilai
+    const valueLabelPlugin = {
+        id: 'valueLabelPlugin',
+        afterDatasetsDraw(chart, args, pluginOptions) {
+            const { ctx } = chart;
+            const dataset = chart.data && chart.data.datasets ? chart.data.datasets[0] : null;
+            if (!dataset) return;
+            const meta = chart.getDatasetMeta(0);
+            ctx.save();
+            ctx.fillStyle = (pluginOptions && pluginOptions.color) ? pluginOptions.color : '#000';
+            ctx.font = (pluginOptions && pluginOptions.font) || '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            meta.data.forEach((bar, index) => {
+                const value = dataset.data[index];
+                if (value === null || typeof value === 'undefined') return;
+                const x = bar.x;
+                const y = bar.y - 4;
+                ctx.fillText(String(value), x, y);
+            });
+            ctx.restore();
+        }
+    };
+
+    window.classicPidsusChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Jumlah Kasus',
+                data: values,
+                backgroundColor: '#36A2EB',
+                borderColor: '#36A2EB',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) { return `Jumlah Kasus: ${context.parsed.y}`; }
+                    }
+                },
+                valueLabelPlugin: { color: '#000', font: '12px Arial' }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: Math.max(...values, 1) + 1,
+                    ticks: { stepSize: 1 }
+                },
+                x: { ticks: { maxRotation: 45 } }
+            }
+        },
+        plugins: [valueLabelPlugin]
+    });
+});
+
+function printReport() {
+    if (window.classicPidsusChart) {
+        try { window.classicPidsusChart.options.animation = false; window.classicPidsusChart.update(); } catch (e) {}
+    }
+    const canvas = document.getElementById('pidsusChart');
+    const chartImage = canvas ? canvas.toDataURL('image/png') : null;
+
+    const tableEl = document.querySelector('table');
+    const printContent = `
+        <html>
+        <head>
+            <title>Laporan PIDSUS</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                .header { text-align: center; margin-bottom: 20px; }
+                .info { margin-bottom: 20px; padding: 10px; background: #f5f5f5; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
+                th { background-color: #f2f2f2; font-weight: bold; }
+                .chart { text-align: center; margin: 20px 0; }
+                .chart img { max-width: 100%; height: auto; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h2>LAPORAN PIDSUS - {{ bulan_nama }} {{ tahun }}</h2>
+                <p>KEJAKSAAN NEGERI</p>
+            </div>
+            <div class="info">
+                <strong>Filter:</strong>
+                Bulan: {{ bulan_nama }}, Tahun: {{ tahun }}
+                {% if start_date or end_date %}
+                 | Periode: {{ start_date or '-' }} s/d {{ end_date or '-' }}
+                {% endif %}
+                <br><strong>Total Data:</strong> {{ total_keseluruhan }} record
+                <br><strong>Dicetak pada:</strong> ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </div>
+            <div class="chart">
+                <h3>Grafik Distribusi Jenis Perkara</h3>
+                ${chartImage ? `<img src="${chartImage}" alt="Chart PIDSUS" />` : '<p>Grafik tidak tersedia</p>'}
+            </div>
+            ${tableEl ? tableEl.outerHTML : ''}
+        </body>
+        </html>
+    `;
+
+    const w = window.open('', '_blank');
+    w.document.write(printContent);
+    w.document.close();
+    setTimeout(() => { w.print(); }, 800);
+}
+</script>
+{% endblock %}
+<style>
+@media print {
+    .btn, .dropdown, .card-header .btn-group {
+        display: none !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    .table {
+        font-size: 12px;
+    }
+    
+    .table th, .table td {
+        padding: 0.3rem !important;
+    }
+}
+</style>
+{% endblock %}
