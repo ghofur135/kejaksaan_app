@@ -2176,10 +2176,11 @@ def laporan_pidsus():
     # Normalize keys to predefined mapping
     def map_to_predefined(name: str) -> str:
         upper = (name or '').upper()
-        if 'KORUPSI' in upper:
-            return 'KORUPSI'
+        # Check more specific patterns first
         if 'TINDAK PIDANA KORUPSI' in upper:
             return 'TINDAK PIDANA KORUPSI'
+        if 'KORUPSI' in upper:
+            return 'KORUPSI'
         if 'PENYALAHGUNAAN' in upper or 'WEWENANG' in upper:
             return 'PENYALAHGUNAAN WEWENANG'
         if 'GRATIFIKASI' in upper:
