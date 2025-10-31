@@ -23,9 +23,29 @@
                 </div>
             </div>
             <div class="card-body">
+                <form method="GET" class="row g-2 align-items-end mb-4">
+                    <div class="col-md-3">
+                        <label class="form-label">Mulai Tanggal</label>
+                        <input type="date" name="start_date" class="form-control form-control-sm" value="{{ start_date or '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Sampai Tanggal</label>
+                        <input type="date" name="end_date" class="form-control form-control-sm" value="{{ end_date or '' }}">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary btn-sm w-100"><i class="fas fa-filter"></i> Terapkan</button>
+                    </div>
+                    <div class="col-md-2">
+                        <a href="{{ url_for('view_pidum') }}" class="btn btn-outline-secondary btn-sm w-100"><i class="fas fa-redo"></i> Reset</a>
+                    </div>
+                </form>
+
                 {% if data %}
                     <div class="mb-3">
-                        <span class="badge bg-primary">Total Data: {{ data|length }}</span>
+                        <span class="badge bg-primary">Total Data: {{ total_records }}</span>
+                        {% if start_date or end_date %}
+                        <span class="badge bg-info text-dark">Filter aktif</span>
+                        {% endif %}
                     </div>
                     
                     <div class="table-responsive">
@@ -76,11 +96,45 @@
                         <div class="col-md-12">
                             <h5>Ringkasan Statistik</h5>
                             <div class="row">
-                                <div class="col-md-12">
+                                <div class="col-md-3">
                                     <div class="card bg-light">
                                         <div class="card-body text-center">
                                             <h6>Total Kasus</h6>
-                                            <h3 class="text-primary">{{ data|length }}</h3>
+                                            <h3 class="text-primary">{{ total_records }}</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h6>Pra Penuntutan</h6>
+                                            <h3 class="text-success">{{ total_pra_penuntutan }}</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h6>Penuntutan</h6>
+                                            <h3 class="text-warning">{{ total_penuntutan }}</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h6>Upaya Hukum</h6>
+                                            <h3 class="text-danger">{{ total_upaya_hukum }}</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-md-3">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h6>Memiliki Keterangan</h6>
+                                            <h3 class="text-info">{{ total_keterangan }}</h3>
                                         </div>
                                     </div>
                                 </div>
