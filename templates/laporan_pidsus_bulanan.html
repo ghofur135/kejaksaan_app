@@ -244,17 +244,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const chartData = JSON.parse(chartDataStr);
     
     // Definisi semua jenis perkara yang wajib ditampilkan
-    const allJenisPerkara = ['KORUPSI', 'TINDAK PIDANA KORUPSI', 'PENYALAHGUNAAN WEWENANG', 'GRATIFIKASI', 'SUAP', 'PENGGELEMBUNGAN PAJAK', 'PERKARA LAINNYA'];
+    const allJenisPerkara = ['TIPIKOR', 'KEPABEANAN', 'BEA CUKAI', 'TPPU', 'PERPAJAKAN', 'PERKARA LAINNYA'];
     
     // Warna untuk setiap jenis perkara
     const colors = {
-        'Korupsi': '#dc3545',
-        'Tindak Pidana Korupsi': '#28a745', 
-        'Penyalahgunaan Wewenang': '#ffc107',
-        'Gratifikasi': '#17a2b8',
-        'Suap': '#6f42c1',
-        'Penggelapan Pajak': '#fd7e14',
-        'Perkara Lainnya': '#6c757d'
+        'TIPIKOR': '#dc3545',
+        'KEPABEANAN': '#28a745',
+        'BEA CUKAI': '#ffc107',
+        'TPPU': '#17a2b8',
+        'PERPAJAKAN': '#6f42c1',
+        'PERKARA LAINNYA': '#6c757d'
     };
     
     // Function untuk membuat chart
@@ -273,7 +272,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log(`${title} - ${jenis}: ${value}`);
             return value;
         });
-        const backgroundColors = allJenisPerkara.map(jenis => colors[jenis]);
+        const backgroundColors = allJenisPerkara.map(jenis => colors[jenis] || '#999999');
         
         const chart = new Chart(ctx, {
             type: 'bar',

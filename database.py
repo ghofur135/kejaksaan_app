@@ -496,7 +496,7 @@ def get_pidsus_report_data_bulanan(tahun=None, bulan=None):
         available_months = cursor.fetchall()
         
         # Define all categories that should always appear
-        predefined_categories = ['KORUPSI', 'TINDAK PIDANA KORUPSI', 'PENYALAHGUNAAN WEWENANG', 'GRATIFIKASI', 'SUAP', 'PENGGELEMBUNGAN PAJAK', 'PERKARA LAINNYA']
+        predefined_categories = ['TIPIKOR', 'KEPABEANAN', 'BEA CUKAI', 'TPPU', 'PERPAJAKAN', 'PERKARA LAINNYA']
         
         # Get all months that should be displayed
         month_names = {
@@ -531,44 +531,39 @@ def get_pidsus_report_data_bulanan(tahun=None, bulan=None):
             if not jenis_text:
                 return 'PERKARA LAINNYA'
             jenis_upper = jenis_text.upper().strip()
-            if 'KORUPSI' in jenis_upper:
-                return 'KORUPSI'
-            elif 'TINDAK PIDANA KORUPSI' in jenis_upper:
-                return 'TINDAK PIDANA KORUPSI'
-            elif 'PENYALAHGUNAAN' in jenis_upper or 'WEWENANG' in jenis_upper:
-                return 'PENYALAHGUNAAN WEWENANG'
-            elif 'GRATIFIKASI' in jenis_upper:
-                return 'GRATIFIKASI'
-            elif 'SUAP' in jenis_upper:
-                return 'SUAP'
-            elif 'PAJAK' in jenis_upper:
-                return 'PENGGELEMBUNGAN PAJAK'
-            else:
-                return 'PERKARA LAINNYA'
+            if 'TIPIKOR' in jenis_upper or 'TINDAK PIDANA KORUPSI' in jenis_upper or 'TPK' in jenis_upper:
+                return 'TIPIKOR'
+            if 'KEPABEA' in jenis_upper:
+                return 'KEPABEANAN'
+            if 'BEA CUKAI' in jenis_upper or ('CUKAI' in jenis_upper and 'BEA' in jenis_upper):
+                return 'BEA CUKAI'
+            if 'TPPU' in jenis_upper or ('PENCUCIAN' in jenis_upper and 'UANG' in jenis_upper):
+                return 'TPPU'
+            if 'PAJAK' in jenis_upper or 'PERPAJAKAN' in jenis_upper:
+                return 'PERPAJAKAN'
+            return 'PERKARA LAINNYA'
         
         for row in rows:
-            key = (row['bulan_nama'], row['jenis_perkara'])
+            normalized = normalize_jenis_perkara(row['jenis_perkara'])
+            key = (row['bulan_nama'], normalized)
             
             # Initialize data structure if not exists
             if key not in data_summary:
                 data_summary[key] = {
                     'BULAN': row['bulan_nama'],
-                    'JENIS_PERKARA': row['jenis_perkara'],
+                    'JENIS_PERKARA': normalized,
                     'JUMLAH': 0,
                     'PENYIDIKAN': 0,
                     'PENUNTUTAN': 0
                 }
             
-            # Normalisasi jenis perkara
-            jenis_normalized = normalize_jenis_perkara(row['jenis_perkara'])
-            
             # Update data summary
             if row['penyidikan'] == '1':
                 data_summary[key]['PENYIDIKAN'] += 1
-                chart_data['penyidikan'][jenis_normalized] = chart_data['penyidikan'].get(jenis_normalized, 0) + 1
+                chart_data['penyidikan'][normalized] = chart_data['penyidikan'].get(normalized, 0) + 1
             if row['penuntutan'] == '1':
                 data_summary[key]['PENUNTUTAN'] += 1
-                chart_data['penuntutan'][jenis_normalized] = chart_data['penuntutan'].get(jenis_normalized, 0) + 1
+                chart_data['penuntutan'][normalized] = chart_data['penuntutan'].get(normalized, 0) + 1
             
             data_summary[key]['JUMLAH'] = data_summary[key]['PENYIDIKAN'] + data_summary[key]['PENUNTUTAN']
         
