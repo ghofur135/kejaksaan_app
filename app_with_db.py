@@ -2252,33 +2252,85 @@ def laporan_pidsus():
             agg[agg_key]['PENYIDIKAN'] + agg[agg_key]['PENUNTUTAN']
         )
 
+    predefined_categories = [
+        'TIPIKOR',
+        'KEPABEANAN',
+        'BEA CUKAI',
+        'TPPU',
+        'PERPAJAKAN',
+        'PERKARA LAINNYA'
+    ]
+
+    def map_to_predefined(name: str) -> str:
+        upper = (name or '').upper()
+        if 'TIPIKOR' in upper or 'TINDAK PIDANA KORUPSI' in upper or 'TPK' in upper:
+            return 'TIPIKOR'
+        if 'KEPABEA' in upper:
+            return 'KEPABEANAN'
+        if 'BEA CUKAI' in upper or ('CUKAI' in upper and 'BEA' in upper):
+            return 'BEA CUKAI'
+        if 'TPPU' in upper or ('PENCUCIAN' in upper and 'UANG' in upper):
+            return 'TPPU'
+        if 'PAJAK' in upper or 'PERPAJAKAN' in upper:
+            return 'PERPAJAKAN'
+        return 'PERKARA LAINNYA'
+
     month_names = {
         1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
         5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
         9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
     }
 
-    def month_order(month_label: str) -> int:
+    remapped = {}
+
+    for (bulan_nama_row, jenis), data in agg.items():
+        bulan_label = bulan_nama_row or 'Tidak Diketahui'
+        bucket = map_to_predefined(jenis)
+        key = (bulan_label, bucket)
+        entry = remapped.setdefault(key, {
+            'BULAN': bulan_label,
+            'jenis_perkara': bucket,
+            'JUMLAH': 0,
+            'PENYIDIKAN': 0,
+            'PENUNTUTAN': 0
+        })
+        entry['PENYIDIKAN'] += data['PENYIDIKAN']
+        entry['PENUNTUTAN'] += data['PENUNTUTAN']
+        entry['JUMLAH'] += data['JUMLAH']
+
+    if bulan:
+        target_month = month_names.get(bulan)
+        months_to_display = [target_month] if target_month else ['Tidak Diketahui']
+    else:
+        months_to_display = sorted({key[0] for key in remapped.keys()}, key=lambda label: next((num for num, name in month_names.items() if name == label), 0))
+        if not months_to_display:
+            current_month = month_names.get(datetime.now().month)
+            months_to_display = [current_month] if current_month else ['Tidak Diketahui']
+
+    for month_label in months_to_display:
+        for category in predefined_categories:
+            key = (month_label, category)
+            remapped.setdefault(key, {
+                'BULAN': month_label,
+                'jenis_perkara': category,
+                'JUMLAH': 0,
+                'PENYIDIKAN': 0,
+                'PENUNTUTAN': 0
+            })
+
+    def month_order(label: str) -> int:
         for number, name in month_names.items():
-            if name == month_label:
+            if name == label:
                 return number
         return 0
 
     report_data = []
-    for (bulan_nama_row, jenis), data in agg.items():
-        bulan_label = bulan_nama_row or 'Tidak Diketahui'
-        report_data.append({
-            'BULAN': bulan_label,
-            'jenis_perkara': jenis,
-            'JUMLAH': data['JUMLAH'],
-            'PENYIDIKAN': data['PENYIDIKAN'],
-            'PENUNTUTAN': data['PENUNTUTAN']
-        })
+    for month_label in months_to_display:
+        for category in predefined_categories:
+            entry = remapped[(month_label, category)]
+            report_data.append(entry)
 
-    if bulan:
-        report_data.sort(key=lambda x: (x['jenis_perkara'] or '').upper())
-    else:
-        report_data.sort(key=lambda x: (month_order(x['BULAN']), (x['jenis_perkara'] or '').upper()))
+    report_data.sort(key=lambda x: (month_order(x['BULAN']), predefined_categories.index(x['jenis_perkara'])))
 
     for index, item in enumerate(report_data, 1):
         item['NO'] = index
