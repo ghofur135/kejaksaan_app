@@ -118,9 +118,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Define all categories that should always appear in the chart
-    const allCategories = ['KORUPSI', 'TINDAK PIDANA KORUPSI', 'PENYALAHGUNAAN WEWENANG', 'GRATIFIKASI', 'SUAP', 'PENGGELEMBUNGAN PAJAK', 'PERKARA LAINNYA'];
-    
     const tableRows = Array.from(document.querySelectorAll('table tbody tr'));
     // Ambil data dari tabel agar sinkron dengan tampilan
     const labels = [];
@@ -144,11 +141,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Ensure all categories are included in the chart, even with zero values
-    allCategories.forEach(category => {
-        labels.push(category);
-        values.push(dataMap[category] || 0);
-    });
+    const derivedCategories = Object.keys(dataMap).sort((a, b) => a.localeCompare(b));
+
+    if (derivedCategories.length === 0) {
+        labels.push('Tidak Ada Data');
+        values.push(0);
+    } else {
+        derivedCategories.forEach(category => {
+            labels.push(category);
+            values.push(dataMap[category]);
+        });
+    }
 
     const ctx = document.getElementById('pidsusChart').getContext('2d');
 

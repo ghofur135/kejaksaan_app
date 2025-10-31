@@ -477,8 +477,98 @@ def view_pidum():
 @app.route('/view_pidsus')
 @login_required
 def view_pidsus():
-    data = get_pidsus_data_for_export()
-    return render_template('view_pidsus.html', data=data)
+    page = request.args.get('page', default=1, type=int)
+    per_page = request.args.get('per_page', default=10, type=int)
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+
+    if page < 1:
+        page = 1
+    if per_page not in (5, 10, 25, 50, 100):
+        per_page = 10
+
+    import sqlite3
+    conn = sqlite3.connect('db/kejaksaan.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    where_clauses = []
+    params = []
+
+    if start_date:
+        where_clauses.append("DATE(tanggal) >= DATE(?)")
+        params.append(start_date)
+
+    if end_date:
+        where_clauses.append("DATE(tanggal) <= DATE(?)")
+        params.append(end_date)
+
+    where_clause = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ''
+
+    count_query = f"SELECT COUNT(*) FROM pidsus_data {where_clause}"
+    cursor.execute(count_query, params)
+    total_records = cursor.fetchone()[0] or 0
+
+    stats_query = f"""
+        SELECT
+            SUM(CASE WHEN penyidikan = '1' THEN 1 ELSE 0 END) AS penyidikan_count,
+            SUM(CASE WHEN penuntutan = '1' THEN 1 ELSE 0 END) AS penuntutan_count,
+            SUM(CASE WHEN TRIM(COALESCE(keterangan, '')) <> '' THEN 1 ELSE 0 END) AS keterangan_count
+        FROM pidsus_data {where_clause}
+    """
+    cursor.execute(stats_query, params)
+    stats_row = cursor.fetchone()
+
+    total_penyidikan = stats_row['penyidikan_count'] if stats_row and stats_row['penyidikan_count'] is not None else 0
+    total_penuntutan = stats_row['penuntutan_count'] if stats_row and stats_row['penuntutan_count'] is not None else 0
+    total_keterangan = stats_row['keterangan_count'] if stats_row and stats_row['keterangan_count'] is not None else 0
+
+    total_pages = max((total_records + per_page - 1) // per_page, 1)
+    if page > total_pages:
+        page = total_pages
+
+    offset = (page - 1) * per_page
+
+    data_query = f"""
+        SELECT id, no, periode, tanggal, jenis_perkara, penyidikan, penuntutan, keterangan, created_at
+        FROM pidsus_data {where_clause}
+        ORDER BY DATE(tanggal) DESC, created_at DESC, id DESC
+        LIMIT ? OFFSET ?
+    """
+    cursor.execute(data_query, params + [per_page, offset])
+    rows = cursor.fetchall()
+    conn.close()
+
+    data = []
+    for row in rows:
+        data.append({
+            'id': row['id'],
+            'NO': row['no'],
+            'PERIODE': row['periode'],
+            'TANGGAL': row['tanggal'],
+            'JENIS PERKARA': row['jenis_perkara'],
+            'PENYIDIKAN': row['penyidikan'],
+            'PENUNTUTAN': row['penuntutan'],
+            'KETERANGAN': row['keterangan']
+        })
+
+    page_numbers = list(range(1, total_pages + 1))
+
+    return render_template(
+        'view_pidsus.html',
+        data=data,
+        page=page,
+        per_page=per_page,
+        total_pages=total_pages,
+        total_records=total_records,
+        start_date=start_date,
+        end_date=end_date,
+        per_page_options=[5, 10, 25, 50, 100],
+        page_numbers=page_numbers,
+        total_penyidikan=total_penyidikan,
+        total_penuntutan=total_penuntutan,
+        total_keterangan=total_keterangan
+    )
 
 @app.route('/delete_all_pidum', methods=['POST'])
 @login_required
@@ -2162,107 +2252,37 @@ def laporan_pidsus():
             agg[agg_key]['PENYIDIKAN'] + agg[agg_key]['PENUNTUTAN']
         )
 
-    # Ensure all predefined categories exist (including zeros)
-    predefined_categories = [
-        'KORUPSI',
-        'TINDAK PIDANA KORUPSI',
-        'PENYALAHGUNAAN WEWENANG',
-        'GRATIFIKASI',
-        'SUAP',
-        'PENGGELEMBUNGAN PAJAK',
-        'PERKARA LAINNYA'
-    ]
+    month_names = {
+        1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
+        5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
+        9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
+    }
 
-    # Normalize keys to predefined mapping
-    def map_to_predefined(name: str) -> str:
-        upper = (name or '').upper()
-        # Check more specific patterns first
-        if 'TINDAK PIDANA KORUPSI' in upper:
-            return 'TINDAK PIDANA KORUPSI'
-        if 'KORUPSI' in upper:
-            return 'KORUPSI'
-        if 'PENYALAHGUNAAN' in upper or 'WEWENANG' in upper:
-            return 'PENYALAHGUNAAN WEWENANG'
-        if 'GRATIFIKASI' in upper:
-            return 'GRATIFIKASI'
-        if 'SUAP' in upper:
-            return 'SUAP'
-        if 'PAJAK' in upper:
-            return 'PENGGELEMBUNGAN PAJAK'
-        return 'PERKARA LAINNYA'
+    def month_order(month_label: str) -> int:
+        for number, name in month_names.items():
+            if name == month_label:
+                return number
+        return 0
 
-    # Re-map aggregated keys into predefined buckets
-    remapped = defaultdict(lambda: {
-        'jenis_perkara': '',
-        'BULAN': '',
-        'JUMLAH': 0,
-        'PENYIDIKAN': 0,
-        'PENUNTUTAN': 0
-    })
-
+    report_data = []
     for (bulan_nama_row, jenis), data in agg.items():
-        bucket = map_to_predefined(jenis)
-        new_key = (bulan_nama_row, bucket)
+        bulan_label = bulan_nama_row or 'Tidak Diketahui'
+        report_data.append({
+            'BULAN': bulan_label,
+            'jenis_perkara': jenis,
+            'JUMLAH': data['JUMLAH'],
+            'PENYIDIKAN': data['PENYIDIKAN'],
+            'PENUNTUTAN': data['PENUNTUTAN']
+        })
 
-        remapped[new_key]['BULAN'] = bulan_nama_row
-        remapped[new_key]['jenis_perkara'] = bucket
-        remapped[new_key]['PENYIDIKAN'] += data['PENYIDIKAN']
-        remapped[new_key]['PENUNTUTAN'] += data['PENUNTUTAN']
-        remapped[new_key]['JUMLAH'] += data['JUMLAH']
-
-    # Ensure all predefined categories are present for each month
-    # Get all months present in the data
-    all_months = set()
-    for key in remapped.keys():
-        all_months.add(key[0])  # key[0] is month name
-    
-    # If no specific month is selected, use all months
-    if not bulan:
-        month_names = {
-            1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
-            5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
-            9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
-        }
-        all_months = {month_names.get(bulan, 'Januari') for bulan in range(1, 13)}
-    else:
-        month_names = {
-            1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
-            5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
-            9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
-        }
-        all_months = {month_names.get(bulan, 'Januari')}
-    
-    # Add missing categories with zero values for each month
-    for month in all_months:
-        for category in predefined_categories:
-            key = (month, category)
-            if key not in remapped:
-                remapped[key] = {
-                    'BULAN': month,
-                    'jenis_perkara': category,
-                    'JUMLAH': 0,
-                    'PENYIDIKAN': 0,
-                    'PENUNTUTAN': 0
-                }
-
-    # Convert to list with sequential NO, ordered by predefined list
-    report_data = list(remapped.values())
-
-    month_map = {name: num for num, name in month_names.items()}
-    
-    # Sort data
-    # If a specific month is selected, sort by category only
     if bulan:
-        report_data.sort(key=lambda x: predefined_categories.index(x['jenis_perkara']) if x['jenis_perkara'] in predefined_categories else -1)
+        report_data.sort(key=lambda x: (x['jenis_perkara'] or '').upper())
     else:
-        # Sort by month, then by category
-        report_data.sort(key=lambda x: (month_map.get(x['BULAN'], 0), predefined_categories.index(x['jenis_perkara']) if x['jenis_perkara'] in predefined_categories else -1))
+        report_data.sort(key=lambda x: (month_order(x['BULAN']), (x['jenis_perkara'] or '').upper()))
 
-    # Add sequential NO
-    for i, item in enumerate(report_data):
-        item['NO'] = i + 1
+    for index, item in enumerate(report_data, 1):
+        item['NO'] = index
 
-    # Calculate totals
     total_penyidikan = sum(item['PENYIDIKAN'] for item in report_data)
     total_penuntutan = sum(item['PENUNTUTAN'] for item in report_data)
     total_keseluruhan = sum(item['JUMLAH'] for item in report_data)
