@@ -149,7 +149,19 @@ def index():
 @app.route('/pilihan_laporan')
 @login_required
 def pilihan_laporan():
-    return render_template('pilihan_laporan.html')
+    return redirect(url_for('pilihan_laporan_pidum'))
+
+
+@app.route('/pilihan_laporan_pidum')
+@login_required
+def pilihan_laporan_pidum():
+    return render_template('pilihan_laporan_pidum.html')
+
+
+@app.route('/pilihan_laporan_pidsus')
+@login_required
+def pilihan_laporan_pidsus():
+    return render_template('pilihan_laporan_pidsus.html')
 
 @app.route('/laporan_pidum_bulanan')
 @login_required
@@ -471,8 +483,69 @@ def input_pidsus():
 @app.route('/view_pidum')
 @login_required
 def view_pidum():
-    data = get_all_pidum_data()  # Changed to include ID for delete functionality
-    return render_template('view_pidum.html', data=data)
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+
+    import sqlite3
+    conn = sqlite3.connect('db/kejaksaan.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    where_clauses = []
+    params = []
+
+    if start_date:
+        where_clauses.append("DATE(tanggal) >= DATE(?)")
+        params.append(start_date)
+
+    if end_date:
+        where_clauses.append("DATE(tanggal) <= DATE(?)")
+        params.append(end_date)
+
+    where_clause = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ''
+    filter_params = tuple(params)
+
+    data_query = f"""
+        SELECT id, no, periode, tanggal, jenis_perkara, tahapan_penanganan, keterangan, created_at
+        FROM pidum_data {where_clause}
+        ORDER BY DATE(tanggal) DESC, created_at DESC, id DESC
+    """
+    cursor.execute(data_query, filter_params)
+    rows = cursor.fetchall()
+
+    data = [dict(row) for row in rows]
+    total_records = len(data)
+
+    total_pra_penuntutan = 0
+    total_penuntutan = 0
+    total_upaya_hukum = 0
+    total_keterangan = 0
+
+    for row in data:
+        tahapan_text = (row.get('tahapan_penanganan') or '').upper()
+        if any(keyword in tahapan_text for keyword in ('UPAYA', 'HUKUM', 'BANDING', 'KASASI')):
+            total_upaya_hukum += 1
+        elif 'PENUNTUTAN' in tahapan_text and 'PRA' not in tahapan_text:
+            total_penuntutan += 1
+        else:
+            total_pra_penuntutan += 1
+
+        if (row.get('keterangan') or '').strip():
+            total_keterangan += 1
+
+    conn.close()
+
+    return render_template(
+        'view_pidum.html',
+        data=data,
+        total_records=total_records,
+        start_date=start_date,
+        end_date=end_date,
+        total_pra_penuntutan=total_pra_penuntutan,
+        total_penuntutan=total_penuntutan,
+        total_upaya_hukum=total_upaya_hukum,
+        total_keterangan=total_keterangan
+    )
 
 @app.route('/view_pidsus')
 @login_required
