@@ -9,11 +9,67 @@ from werkzeug.utils import secure_filename
 import os
 from datetime import datetime
 import re
+import json
+import tempfile
+import uuid
 
 def allowed_file_pra_penuntutan(filename):
     """Check if uploaded file has allowed extension for pra penuntutan"""
     ALLOWED_EXTENSIONS = {'csv', 'xlsx', 'xls'}
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def save_import_data_to_temp(data, filename):
+    """Save import data to temporary file and return session ID"""
+    # Generate unique session ID
+    session_id = str(uuid.uuid4())
+
+    # Create temp directory if not exists
+    temp_dir = os.path.join(tempfile.gettempdir(), 'kejaksaan_imports')
+    os.makedirs(temp_dir, exist_ok=True)
+
+    # Save data to temp file
+    temp_file = os.path.join(temp_dir, f'{session_id}.json')
+
+    with open(temp_file, 'w', encoding='utf-8') as f:
+        json.dump({
+            'data': data,
+            'filename': filename,
+            'timestamp': datetime.now().isoformat()
+        }, f)
+
+    return session_id
+
+def load_import_data_from_temp(session_id):
+    """Load import data from temporary file"""
+    if not session_id:
+        return None
+
+    temp_dir = os.path.join(tempfile.gettempdir(), 'kejaksaan_imports')
+    temp_file = os.path.join(temp_dir, f'{session_id}.json')
+
+    if not os.path.exists(temp_file):
+        return None
+
+    try:
+        with open(temp_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Error loading temp file: {e}")
+        return None
+
+def cleanup_import_temp_file(session_id):
+    """Clean up temporary import file"""
+    if not session_id:
+        return
+
+    temp_dir = os.path.join(tempfile.gettempdir(), 'kejaksaan_imports')
+    temp_file = os.path.join(temp_dir, f'{session_id}.json')
+
+    if os.path.exists(temp_file):
+        try:
+            os.remove(temp_file)
+        except Exception as e:
+            print(f"Error removing temp file: {e}")
 
 def extract_date_from_tgl_nomor(tgl_nomor_value):
     """Extract date from Tgl_Nomor field like '2025-08-28 SPDP/63/VIII/RES.1.24/2025/Reskrim'"""

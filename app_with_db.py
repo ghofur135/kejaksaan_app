@@ -1787,12 +1787,15 @@ def import_pra_penuntutan_api():
             result = process_pra_penuntutan_import_file(file)
             
             if result['success']:
-                # Store import data in session for preview
-                session['import_data_pra_penuntutan'] = result['data']
-                session['import_filename_pra_penuntutan'] = file.filename
+                # Store import data in temporary file instead of session (to avoid size limits)
+                from import_pra_penuntutan_helper import save_import_data_to_temp
+                session_id = save_import_data_to_temp(result['data'], file.filename)
+
+                # Store only the session ID in session
+                session['import_session_id_pra_penuntutan'] = session_id
                 session['import_format_type'] = 'pra_penuntutan'
-                
-                return render_template('import_pra_penuntutan_preview.html', 
+
+                return render_template('import_pra_penuntutan_preview.html',
                                      import_data=result['data'],
                                      filename=file.filename,
                                      total_rows=result['total_rows'],
@@ -1811,11 +1814,20 @@ def import_pra_penuntutan_api():
 @login_required
 def confirm_import_pra_penuntutan():
     """Confirm and process pra penuntutan import"""
-    import_data = session.get('import_data_pra_penuntutan', [])
-    
-    if not import_data:
+    # Load import data from temporary file
+    from import_pra_penuntutan_helper import load_import_data_from_temp, cleanup_import_temp_file
+
+    session_id = session.get('import_session_id_pra_penuntutan')
+    if not session_id:
         flash('Tidak ada data import yang tersedia', 'error')
         return redirect(url_for('import_tahapan', tahapan='pra_penuntutan'))
+
+    temp_data = load_import_data_from_temp(session_id)
+    if not temp_data or 'data' not in temp_data:
+        flash('Tidak ada data import yang tersedia', 'error')
+        return redirect(url_for('import_tahapan', tahapan='pra_penuntutan'))
+
+    import_data = temp_data['data']
     
     try:
         # Prepare data from form
@@ -1835,9 +1847,9 @@ def confirm_import_pra_penuntutan():
                 error_details.append(f"Baris {data.get('NO', '?')}: {str(e)}")
                 print(f"Error inserting row {data.get('NO', '?')}: {e}")
         
-        # Clear session data
-        session.pop('import_data_pra_penuntutan', None)
-        session.pop('import_filename_pra_penuntutan', None)
+        # Clear session data and temp file
+        cleanup_import_temp_file(session_id)
+        session.pop('import_session_id_pra_penuntutan', None)
         session.pop('import_format_type', None)
         
         # Show results
