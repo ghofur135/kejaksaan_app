@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session, jsonify, make_response
 from functools import wraps
 import pandas as pd
 import os
@@ -86,6 +86,8 @@ def generate_pidum_chart(report_data):
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB max file size
+app.config['TEMPLATES_AUTO_RELOAD'] = True  # Force reload templates on change
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Disable static file caching
 
 # Initialize database on startup
 init_database()
@@ -1000,7 +1002,7 @@ def laporan_pidum():
     else:
         display_period = 'Semua Bulan'
     
-    return render_template(
+    response = make_response(render_template(
         'laporan_pidum.html',
         report_data=report_data,
         bulan=bulan,
@@ -1012,7 +1014,12 @@ def laporan_pidum():
         total_penuntutan=total_penuntutan,
         total_upaya_hukum=total_upaya_hukum,
         total_keseluruhan=total_keseluruhan
-    )
+    ))
+    # Prevent browser caching to ensure latest template is loaded
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 @app.route('/laporan_pidum_new')
 @login_required

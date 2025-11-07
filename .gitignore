@@ -90,3 +90,6 @@ logs/
 # Database files
 *.db
 db/kejaksaan.db
+
+# Documentation captures
+/docs/capture/

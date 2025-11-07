@@ -128,9 +128,28 @@
 </div>
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js?v=20251107"></script>
 <script>
+// Force cache refresh
+console.log('=== PAGE LOADED - TIMESTAMP:', new Date().toISOString(), '===');
+// ============================================
+// CHART VERSION: 2025-11-07-MINT-GREEN-FIX
+// Warna chart: #96CEB4 (MINT GREEN)
+// ============================================
 document.addEventListener('DOMContentLoaded', function() {
+    // Force chart color update
+    Chart.defaults.color = '#000';
+    Chart.defaults.borderColor = '#ddd';
+    
+    // Clear any existing chart instances immediately
+    if (window.classicPidumChart) {
+        window.classicPidumChart.destroy();
+        window.classicPidumChart = null;
+    }
+    console.log('=== CHART SCRIPT LOADED - VERSION: GREEN COLOR FIX ===');
+    
+    // Small delay to ensure DOM is fully ready
+    setTimeout(() => {
     // Define all categories that should always appear in the chart
     const allCategories = ['NARKOBA', 'PERKARA ANAK', 'KESUSILAAN', 'JUDI', 'KDRT', 'OHARDA', 'PERKARA LAINNYA'];
     
@@ -165,6 +184,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const ctx = document.getElementById('pidumChart').getContext('2d');
 
+    // DESTROY existing chart if any to prevent "Canvas already in use" error
+    if (window.classicPidumChart) {
+        window.classicPidumChart.destroy();
+        console.log('Old chart destroyed');
+    }
+
     // Plugin label nilai
     const valueLabelPlugin = {
         id: 'valueLabelPlugin',
@@ -189,6 +214,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    // Set colors explicitly
+    const CHART_BG_COLOR = '#96CEB4';  // MINT GREEN
+    const CHART_BORDER_COLOR = '#7FB8B0';  // DARKER MINT GREEN
+    
+    // Debug: Check color value
+    console.log('Chart backgroundColor:', CHART_BG_COLOR);
+    console.log('Chart borderColor:', CHART_BORDER_COLOR);
+    
+    // Clear any existing chart instance with force
+    const canvas = document.getElementById('pidumChart');
+    if (canvas) {
+        const context = canvas.getContext('2d');
+        context.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    
     window.classicPidumChart = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -196,9 +236,11 @@ document.addEventListener('DOMContentLoaded', function() {
             datasets: [{
                 label: 'Jumlah Kasus',
                 data: values,
-                backgroundColor: '#36A2EB',
-                borderColor: '#36A2EB',
-                borderWidth: 1
+                backgroundColor: CHART_BG_COLOR,
+                borderColor: CHART_BORDER_COLOR,
+                borderWidth: 2,
+                hoverBackgroundColor: CHART_BG_COLOR,
+                hoverBorderColor: CHART_BORDER_COLOR
             }]
         },
         options: {
@@ -222,6 +264,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         },
         plugins: [valueLabelPlugin]
+    }, 100);
     });
 });
 
