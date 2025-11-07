@@ -16,7 +16,7 @@
                         <form method="GET" action="{{ url_for('laporan_pidum') }}" class="row g-2 align-items-end">
                             <div class="col-md-3">
                                 <label class="form-label">Bulan</label>
-                                <select name="bulan" class="form-select form-select-sm">
+                                <select name="bulan" class="form-select form-select-sm" id="filterBulan">
                                     <option value="" {% if not bulan %}selected{% endif %}>Semua Bulan</option>
                                     {% for i in range(1,13) %}
                                     <option value="{{ i }}" {% if bulan == i %}selected{% endif %}>
@@ -24,27 +24,37 @@
                                     </option>
                                     {% endfor %}
                                 </select>
+                                <small class="text-muted">Filter bulan/tahun diabaikan jika tanggal dipilih</small>
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label">Tahun</label>
-                                <select name="tahun" class="form-select form-select-sm">
+                                <select name="tahun" class="form-select form-select-sm" id="filterTahun">
                                     {% for year in range(2020, 2031) %}
                                     <option value="{{ year }}" {% if tahun == year %}selected{% endif %}>{{ year }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label">Dari Tanggal</label>
-                                <input type="date" name="start_date" class="form-control form-control-sm" value="{{ start_date or '' }}">
+                                <input type="date" name="start_date" class="form-control form-control-sm" value="{{ start_date or '' }}" id="filterStartDate">
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label">Sampai Tanggal</label>
-                                <input type="date" name="end_date" class="form-control form-control-sm" value="{{ end_date or '' }}">
+                                <input type="date" name="end_date" class="form-control form-control-sm" value="{{ end_date or '' }}" id="filterEndDate">
                             </div>
-                            <div class="col-md-1 d-grid">
-                                <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i> Tampilkan</button>
+                            <div class="col-md-3 d-grid gap-2">
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary btn-sm flex-grow-1"><i class="fas fa-search"></i> Tampilkan</button>
+                                    <a href="{{ url_for('laporan_pidum') }}" class="btn btn-secondary btn-sm"><i class="fas fa-redo"></i> Reset</a>
+                                </div>
                             </div>
                         </form>
+                        {% if start_date or end_date %}
+                        <div class="alert alert-info alert-dismissible fade show mt-2 mb-0" role="alert">
+                            <i class="fas fa-info-circle"></i> <strong>Filter Tanggal Aktif:</strong> Filter bulan dan tahun diabaikan. Menampilkan data dari <strong>{{ start_date or 'Awal' }}</strong> sampai <strong>{{ end_date or 'Akhir' }}</strong>.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
                 <!-- Table Report -->
@@ -104,7 +114,7 @@
                         <i class="fas fa-arrow-left"></i> Kembali ke Data PIDUM
                     </a>
                     <div>
-                        <a href="{{ url_for('export_pidum_excel') }}?bulan={{ bulan }}&tahun={{ tahun }}" class="btn btn-success">
+                        <a href="{{ url_for('export_pidum_excel') }}?bulan={{ bulan or '' }}&tahun={{ tahun or '' }}&start_date={{ start_date or '' }}&end_date={{ end_date or '' }}" class="btn btn-success">
                             <i class="fas fa-file-excel"></i> Export Excel
                         </a>
                         <button onclick="printReport()" class="btn btn-primary">

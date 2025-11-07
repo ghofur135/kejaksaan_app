@@ -797,21 +797,26 @@ def laporan_pidum():
     where_conditions = []
     params = []
 
-    if bulan:
-        where_conditions.append("strftime('%m', tanggal) = ?")
-        params.append(f"{bulan:02d}")
+    # LOGIC FIX: Prioritize date range filter over month/year filter
+    # If start_date OR end_date is provided, use ONLY date range filter
+    # Otherwise, use month/year filter
+    if start_date or end_date:
+        # Use date range filter only
+        if start_date:
+            where_conditions.append("tanggal >= ?")
+            params.append(start_date)
+        if end_date:
+            where_conditions.append("tanggal <= ?")
+            params.append(end_date)
+    else:
+        # Use month/year filter only when date range is not specified
+        if bulan:
+            where_conditions.append("strftime('%m', tanggal) = ?")
+            params.append(f"{bulan:02d}")
 
-    if tahun:
-        where_conditions.append("strftime('%Y', tanggal) = ?")
-        params.append(str(tahun))
-
-    if start_date:
-        where_conditions.append("tanggal >= ?")
-        params.append(start_date)
-
-    if end_date:
-        where_conditions.append("tanggal <= ?")
-        params.append(end_date)
+        if tahun:
+            where_conditions.append("strftime('%Y', tanggal) = ?")
+            params.append(str(tahun))
 
     where_clause = ""
     if where_conditions:
@@ -928,25 +933,23 @@ def laporan_pidum():
         remapped[new_key]['JUMLAH'] += data['JUMLAH']
 
     # Ensure all predefined categories are present for each month
-    # Get all months present in the data
-    all_months = set()
-    for key in remapped.keys():
-        all_months.add(key[0])  # key[0] is the month name
+    month_names = {
+        1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
+        5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
+        9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
+    }
     
-    # If no specific month is selected, use all months
-    if not bulan:
-        month_names = {
-            1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
-            5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
-            9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
-        }
-        all_months = {month_names.get(bulan, 'Januari') for bulan in range(1, 13)}
+    # Determine which months to display based on filter type
+    if start_date or end_date:
+        # For date range filter: only show months that have actual data
+        all_months = set()
+        for key in remapped.keys():
+            all_months.add(key[0])  # key[0] is the month name
+    elif not bulan:
+        # No filter: show all 12 months
+        all_months = {month_names.get(m, 'Januari') for m in range(1, 13)}
     else:
-        month_names = {
-            1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
-            5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
-            9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
-        }
+        # Specific month filter: show only that month
         all_months = {month_names.get(bulan, 'Januari')}
     
     # Add missing categories with zero values for each month
@@ -986,6 +989,17 @@ def laporan_pidum():
     total_upaya_hukum = sum(item['UPAYA HUKUM'] for item in report_data)
     total_keseluruhan = sum(item['JUMLAH'] for item in report_data)
 
+    # Determine display name based on active filter
+    if start_date or end_date:
+        # Show date range in header
+        from_date = start_date if start_date else 'Awal'
+        to_date = end_date if end_date else 'Akhir'
+        display_period = f"Periode: {from_date} s/d {to_date}"
+    elif bulan:
+        display_period = month_names.get(bulan, 'Tidak Diketahui')
+    else:
+        display_period = 'Semua Bulan'
+    
     return render_template(
         'laporan_pidum.html',
         report_data=report_data,
@@ -993,7 +1007,7 @@ def laporan_pidum():
         tahun=tahun,
         start_date=start_date,
         end_date=end_date,
-        bulan_nama=(month_names.get(bulan) if bulan else 'Semua Bulan'),
+        bulan_nama=display_period,
         total_pra_penuntutan=total_pra_penuntutan,
         total_penuntutan=total_penuntutan,
         total_upaya_hukum=total_upaya_hukum,
@@ -1126,10 +1140,62 @@ def laporan_pidum_new():
 @app.route('/export_pidum_excel')
 @login_required
 def export_pidum_excel():
-    data = get_pidum_data_for_export()
-    if not data:
-        flash('Tidak ada data PIDUM untuk diekspor', 'warning')
+    # Get filter parameters (same as laporan_pidum)
+    bulan_raw = request.args.get('bulan')
+    bulan = int(bulan_raw) if bulan_raw not in (None, '') else None
+    tahun = request.args.get('tahun', type=int)
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    # Apply filters to data retrieval
+    import sqlite3
+    conn = sqlite3.connect('db/kejaksaan.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    where_conditions = []
+    params = []
+    
+    # Use same filter logic as laporan_pidum
+    if start_date or end_date:
+        if start_date:
+            where_conditions.append("tanggal >= ?")
+            params.append(start_date)
+        if end_date:
+            where_conditions.append("tanggal <= ?")
+            params.append(end_date)
+    else:
+        if bulan:
+            where_conditions.append("strftime('%m', tanggal) = ?")
+            params.append(f"{bulan:02d}")
+        if tahun:
+            where_conditions.append("strftime('%Y', tanggal) = ?")
+            params.append(str(tahun))
+    
+    where_clause = ""
+    if where_conditions:
+        where_clause = "WHERE " + " AND ".join(where_conditions)
+    
+    query = f"SELECT * FROM pidum_data {where_clause} ORDER BY tanggal, no"
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    
+    if not rows:
+        flash('Tidak ada data PIDUM untuk diekspor dengan filter yang dipilih', 'warning')
         return redirect(url_for('view_pidum'))
+    
+    # Format data for export
+    data = []
+    for row in rows:
+        data.append({
+            'NO': row['no'],
+            'PERIODE': row['periode'],
+            'TANGGAL': row['tanggal'],
+            'JENIS PERKARA': row['jenis_perkara'],
+            'TAHAPAN PENANGANAN': row['tahapan_penanganan'],
+            'KETERANGAN': row['keterangan']
+        })
     
     # Create DataFrame
     df = pd.DataFrame(data)
