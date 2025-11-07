@@ -1041,28 +1041,34 @@ def laporan_pidum_new():
     cursor = conn.cursor()
     
     # Build query based on filters
+    # LOGIC: Prioritize date range filter over month/year filter
     where_conditions = []
     params = []
     
-    if bulan:
-        where_conditions.append("strftime('%m', tanggal) = ?")
-        params.append(f"{bulan:02d}")
+    # If start_date OR end_date is provided, use ONLY date range filter
+    # Otherwise, use month/year filter
+    if start_date or end_date:
+        # Use date range filter only
+        if start_date:
+            where_conditions.append("tanggal >= ?")
+            params.append(start_date)
+        if end_date:
+            where_conditions.append("tanggal <= ?")
+            params.append(end_date)
+    else:
+        # Use month/year filter only when date range is not specified
+        if bulan:
+            where_conditions.append("strftime('%m', tanggal) = ?")
+            params.append(f"{bulan:02d}")
+        
+        if tahun:
+            where_conditions.append("strftime('%Y', tanggal) = ?")
+            params.append(str(tahun))
     
-    if tahun:
-        where_conditions.append("strftime('%Y', tanggal) = ?")
-        params.append(str(tahun))
-    
+    # Periode filter is independent and always applied if provided
     if periode_filter:
         where_conditions.append("periode = ?")
         params.append(periode_filter)
-    
-    if start_date:
-        where_conditions.append("tanggal >= ?")
-        params.append(start_date)
-    
-    if end_date:
-        where_conditions.append("tanggal <= ?")
-        params.append(end_date)
     
     where_clause = ""
     if where_conditions:
@@ -1084,45 +1090,89 @@ def laporan_pidum_new():
     
     conn.close()
     
-    # Process data for report
+    # Define 7 predefined categories
+    predefined_categories = [
+        'NARKOBA',
+        'PERKARA ANAK',
+        'KESUSILAAN',
+        'JUDI',
+        'KDRT',
+        'OHARDA',
+        'PERKARA LAINNYA'
+    ]
+    
+    # Normalize function to map jenis_perkara to predefined categories
+    def map_to_predefined(name: str) -> str:
+        upper = (name or '').upper()
+        if 'NARKOBA' in upper or 'NARKOTIKA' in upper:
+            return 'NARKOBA'
+        if 'ANAK' in upper:
+            return 'PERKARA ANAK'
+        if 'KESUSILAAN' in upper or 'SUSILA' in upper:
+            return 'KESUSILAAN'
+        if 'JUDI' in upper:
+            return 'JUDI'
+        if 'KDRT' in upper:
+            return 'KDRT'
+        if 'OHARDA' in upper:
+            return 'OHARDA'
+        return 'PERKARA LAINNYA'
+    
+    # Process data for report - aggregate by jenis_perkara only (no date, no periode)
     data_summary = defaultdict(lambda: {
-        'PERIODE': '',
         'JENIS_PERKARA': '',
-        'TANGGAL': '',
-        'TOTAL': 0,
+        'JUMLAH': 0,
         'PRA_PENUNTUTAN': 0,
         'PENUNTUTAN': 0,
         'UPAYA_HUKUM': 0
     })
     
     for row in rows:
-        key = (row['periode'], row['jenis_perkara'], row['tanggal'])
-        data_summary[key]['PERIODE'] = row['periode']
-        data_summary[key]['JENIS_PERKARA'] = row['jenis_perkara']
-        data_summary[key]['TANGGAL'] = row['tanggal']
+        # Map to predefined category
+        jenis_asli = row['jenis_perkara'] or 'Tidak Diketahui'
+        jenis_mapped = map_to_predefined(jenis_asli)
+        
+        # Aggregate by mapped category only
+        if data_summary[jenis_mapped]['JENIS_PERKARA'] == '':
+            data_summary[jenis_mapped]['JENIS_PERKARA'] = jenis_mapped
         
         # Map tahapan_penanganan to report columns
         tahapan = row['tahapan_penanganan'].upper() if row['tahapan_penanganan'] else ''
         
         if 'PRA PENUNTUTAN' in tahapan:
-            data_summary[key]['PRA_PENUNTUTAN'] += 1
+            data_summary[jenis_mapped]['PRA_PENUNTUTAN'] += 1
         elif 'PENUNTUTAN' in tahapan:
-            data_summary[key]['PENUNTUTAN'] += 1
+            data_summary[jenis_mapped]['PENUNTUTAN'] += 1
         elif 'UPAYA HUKUM' in tahapan:
-            data_summary[key]['UPAYA_HUKUM'] += 1
+            data_summary[jenis_mapped]['UPAYA_HUKUM'] += 1
         else:
             # Default ke pra penuntutan jika tidak jelas
-            data_summary[key]['PRA_PENUNTUTAN'] += 1
+            data_summary[jenis_mapped]['PRA_PENUNTUTAN'] += 1
         
-        data_summary[key]['TOTAL'] = (data_summary[key]['PRA_PENUNTUTAN'] + 
-                                     data_summary[key]['PENUNTUTAN'] + 
-                                     data_summary[key]['UPAYA_HUKUM'])
+        data_summary[jenis_mapped]['JUMLAH'] = (data_summary[jenis_mapped]['PRA_PENUNTUTAN'] + 
+                                                 data_summary[jenis_mapped]['PENUNTUTAN'] + 
+                                                 data_summary[jenis_mapped]['UPAYA_HUKUM'])
     
-    # Convert to list
-    report_data = list(data_summary.values())
+    # Ensure all 7 categories exist (even with zero values)
+    for category in predefined_categories:
+        if category not in data_summary:
+            data_summary[category] = {
+                'JENIS_PERKARA': category,
+                'JUMLAH': 0,
+                'PRA_PENUNTUTAN': 0,
+                'PENUNTUTAN': 0,
+                'UPAYA_HUKUM': 0
+            }
+    
+    # Convert to list and sort by predefined order
+    report_data = [data_summary[cat] for cat in predefined_categories]
+    
+    # Add sequential NO
+    for i, item in enumerate(report_data):
+        item['NO'] = i + 1
     
     # Calculate totals
-    total_keseluruhan = sum(item['TOTAL'] for item in report_data)
+    total_keseluruhan = sum(item['JUMLAH'] for item in report_data)
     total_pra_penuntutan = sum(item['PRA_PENUNTUTAN'] for item in report_data)
     total_penuntutan = sum(item['PENUNTUTAN'] for item in report_data)
     total_upaya_hukum = sum(item['UPAYA_HUKUM'] for item in report_data)

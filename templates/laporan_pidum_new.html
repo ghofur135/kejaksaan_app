@@ -36,6 +36,7 @@
                                     </option>
                                     {% endfor %}
                                 </select>
+                                <small class="text-muted">Diabaikan jika filter tanggal digunakan</small>
                             </div>
                             <div class="col-md-2">
                                 <label for="tahun" class="form-label">Tahun</label>
@@ -71,6 +72,14 @@
                                 </a>
                             </div>
                         </form>
+                        
+                        {% if start_date or end_date %}
+                        <div class="alert alert-warning alert-dismissible fade show mt-3 mb-0" role="alert">
+                            <i class="fas fa-exclamation-triangle"></i> <strong>Filter Tanggal Aktif:</strong> 
+                            Filter bulan dan tahun diabaikan. Menampilkan data dari <strong>{{ start_date or 'Awal' }}</strong> sampai <strong>{{ end_date or 'Akhir' }}</strong>.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
 
@@ -81,18 +90,16 @@
                             <h6><i class="fas fa-info-circle"></i> Informasi Laporan</h6>
                             <p class="mb-0">
                                 <strong>Periode:</strong> 
-                                {% if bulan %}
-                                    {{ ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
-                                         'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][bulan] }}
-                                {% else %}
-                                    Semua Bulan
-                                {% endif %}
-                                {{ tahun if tahun else '2025' }}
                                 {% if start_date or end_date %}
-                                    | <strong>Filter Tanggal:</strong>
-                                    {% if start_date %}{{ start_date }}{% endif %}
-                                    {% if start_date and end_date %} s/d {% endif %}
-                                    {% if end_date %}{{ end_date }}{% endif %}
+                                    Filter Tanggal: {{ start_date or 'Awal' }} s/d {{ end_date or 'Akhir' }}
+                                {% else %}
+                                    {% if bulan %}
+                                        {{ ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+                                             'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][bulan] }}
+                                    {% else %}
+                                        Semua Bulan
+                                    {% endif %}
+                                    {{ tahun if tahun else '2025' }}
                                 {% endif %}
                                 | <strong>Total Kasus:</strong> {{ total_keseluruhan }} 
                                 | <strong>Data per:</strong> {{ current_date }}
@@ -105,92 +112,51 @@
                 <div class="row">
                     <div class="col-md-12">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5><i class="fas fa-table"></i> Tabel Laporan</h5>
-                            <div class="d-flex align-items-center">
-                                <label for="entriesPerPage" class="form-label me-2 mb-0">Tampilkan:</label>
-                                <select id="entriesPerPage" class="form-select form-select-sm" style="width: auto;">
-                                    <option value="10">10</option>
-                                    <option value="20">20</option>
-                                    <option value="30">30</option>
-                                    <option value="50">50</option>
-                                    <option value="100">100</option>
-                                </select>
-                                <span class="ms-2">entri</span>
-                            </div>
+                            <h5><i class="fas fa-table"></i> Summary Laporan PIDUM</h5>
                         </div>
                         
                         <div class="table-responsive">
                             <table class="table table-bordered table-striped" id="dataTable">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th width="4%" style="color: black;">No</th>
-                                        <th width="12%" style="color: black;">Periode</th>
-                                        <th width="12%" style="color: black;">Tanggal</th>
-                                        <th width="20%" style="color: black;">Jenis Perkara</th>
-                                        <th width="8%" style="color: black;">Total</th>
-                                        <th width="12%" style="color: black;">Pra Penuntutan</th>
-                                        <th width="12%" style="color: black;">Penuntutan</th>
-                                        <th width="12%" style="color: black;">Upaya Hukum</th>
+                                <thead class="table-dark">
+                                    <tr style="background-color: #e9ecef !important;">
+                                        <th rowspan="2" style="color: #000000 !important; vertical-align: middle; text-align: center; width: 5%;">NO</th>
+                                        <th rowspan="2" style="color: #000000 !important; vertical-align: middle; text-align: center; width: 35%;">JENIS PERKARA</th>
+                                        <th rowspan="2" style="color: #000000 !important; vertical-align: middle; text-align: center; width: 10%;">JUMLAH</th>
+                                        <th colspan="3" style="color: #000000 !important; text-align: center; width: 50%;">TAHAPAN PENANGANAN</th>
+                                    </tr>
+                                    <tr style="background-color: #e9ecef !important;">
+                                        <th style="color: #000000 !important; text-align: center;">PRA PENUNTUTAN</th>
+                                        <th style="color: #000000 !important; text-align: center;">PENUNTUTAN</th>
+                                        <th style="color: #000000 !important; text-align: center;">UPAYA HUKUM</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tableBody">
                                     {% for item in report_data %}
                                     <tr>
-                                        <td class="text-center">{{ loop.index }}</td>
-                                        <td>
-                                            {% if item.PERIODE %}
-                                                <span class="badge bg-primary">{{ item.PERIODE }}</span>
-                                            {% else %}
-                                                <span class="badge bg-secondary">Semua</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if item.TANGGAL %}
-                                                <span class="badge bg-secondary">{{ item.TANGGAL }}</span>
-                                            {% else %}
-                                                <span class="badge bg-light text-dark">-</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-info">{{ item.JENIS_PERKARA }}</span>
-                                        </td>
-                                        <td class="text-center">
-                                            <strong class="text-primary">{{ item.TOTAL }}</strong>
-                                        </td>
-                                        <td class="text-center">
-                                            <span class="badge bg-success">{{ item.PRA_PENUNTUTAN }}</span>
-                                        </td>
-                                        <td class="text-center">
-                                            <span class="badge bg-warning">{{ item.PENUNTUTAN }}</span>
-                                        </td>
-                                        <td class="text-center">
-                                            <span class="badge bg-danger">{{ item.UPAYA_HUKUM }}</span>
-                                        </td>
+                                        <td class="text-center">{{ item.NO }}</td>
+                                        <td><strong>{{ item.JENIS_PERKARA }}</strong></td>
+                                        <td class="text-center"><strong class="text-primary">{{ item.JUMLAH }}</strong></td>
+                                        <td class="text-center">{{ item.PRA_PENUNTUTAN }}</td>
+                                        <td class="text-center">{{ item.PENUNTUTAN }}</td>
+                                        <td class="text-center">{{ item.UPAYA_HUKUM }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
-                                <tfoot class="table-secondary">
+                                <tfoot class="table-warning">
                                     <tr>
-                                        <th colspan="4" class="text-center">TOTAL KESELURUHAN</th>
-                                        <th class="text-center"><span id="totalData">{{ total_keseluruhan }}</span></th>
-                                        <th class="text-center">{{ total_pra_penuntutan }}</th>
-                                        <th class="text-center">{{ total_penuntutan }}</th>
-                                        <th class="text-center">{{ total_upaya_hukum }}</th>
+                                        <th colspan="2" class="text-center" style="font-weight: bold;">TOTAL</th>
+                                        <th class="text-center" style="font-weight: bold;"><span id="totalData">{{ total_keseluruhan }}</span></th>
+                                        <th class="text-center" style="font-weight: bold;">{{ total_pra_penuntutan }}</th>
+                                        <th class="text-center" style="font-weight: bold;">{{ total_penuntutan }}</th>
+                                        <th class="text-center" style="font-weight: bold;">{{ total_upaya_hukum }}</th>
                                     </tr>
                                 </tfoot>
                             </table>
                         </div>
                         
-                        <!-- Pagination Controls -->
-                        <div class="d-flex justify-content-between align-items-center mt-3">
-                            <div id="paginationInfo" class="text-muted">
-                                Menampilkan 1 sampai 10 dari {{ report_data|length }} entri
-                            </div>
-                            <nav aria-label="Table pagination">
-                                <ul class="pagination pagination-sm mb-0" id="paginationControls">
-                                    <!-- Pagination akan di-generate oleh JavaScript -->
-                                </ul>
-                            </nav>
+                        <!-- Info -->
+                        <div class="text-muted mt-3">
+                            <small><i class="fas fa-info-circle"></i> Menampilkan summary untuk {{ report_data|length }} kategori jenis perkara</small>
                         </div>
                     </div>
                 </div>
@@ -259,167 +225,14 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-// Global variables
-let currentPage = 1;
-let rowsPerPage = 10;
-let totalRows = 0;
-let allTableRows = [];
-
 // Wait for DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, initializing...');
-    initPagination();
     initChart();
 });
 
 // Data from backend
 const reportData = {{ report_data | tojson }};
-
-function initPagination() {
-    console.log('Initializing pagination...');
-    
-    // Get table body and all rows
-    const tableBody = document.getElementById('tableBody');
-    if (!tableBody) {
-        console.error('Table body not found');
-        return;
-    }
-    
-    allTableRows = Array.from(tableBody.querySelectorAll('tr'));
-    totalRows = allTableRows.length;
-    
-    console.log('Found', totalRows, 'rows');
-    
-    // Setup entries per page selector
-    const entriesSelect = document.getElementById('entriesPerPage');
-    if (entriesSelect) {
-        entriesSelect.addEventListener('change', function() {
-            rowsPerPage = parseInt(this.value);
-            currentPage = 1;
-            showPage();
-        });
-    }
-    
-    // Initial display
-    showPage();
-}
-
-function showPage() {
-    console.log('Showing page', currentPage, 'with', rowsPerPage, 'rows per page');
-    
-    if (totalRows === 0) return;
-    
-    // Calculate start and end indices
-    const startIndex = (currentPage - 1) * rowsPerPage;
-    const endIndex = startIndex + rowsPerPage;
-    
-    // Hide all rows first, then show current page rows
-    allTableRows.forEach((row, index) => {
-        if (index >= startIndex && index < endIndex) {
-            row.style.display = '';
-            // Update row number
-            const numberCell = row.querySelector('td:first-child');
-            if (numberCell) {
-                numberCell.textContent = index + 1;
-            }
-        } else {
-            row.style.display = 'none';
-        }
-    });
-    
-    // Update pagination info and controls
-    updatePaginationInfo();
-    updatePaginationControls();
-}
-
-function updatePaginationInfo() {
-    const start = (currentPage - 1) * rowsPerPage + 1;
-    const end = Math.min(currentPage * rowsPerPage, totalRows);
-    
-    const infoElement = document.getElementById('paginationInfo');
-    if (infoElement) {
-        infoElement.textContent = `Menampilkan ${start} sampai ${end} dari ${totalRows} entri`;
-    }
-}
-
-function updatePaginationControls() {
-    const totalPages = Math.ceil(totalRows / rowsPerPage);
-    const paginationControls = document.getElementById('paginationControls');
-    
-    if (!paginationControls) return;
-    
-    paginationControls.innerHTML = '';
-    
-    // Previous button
-    const prevButton = createPageButton('«', currentPage - 1, currentPage === 1);
-    paginationControls.appendChild(prevButton);
-    
-    // Page numbers (simplified approach)
-    const maxVisiblePages = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-    
-    // Adjust start if we're near the end
-    if (endPage - startPage < maxVisiblePages - 1) {
-        startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-    
-    // Add first page and dots if needed
-    if (startPage > 1) {
-        paginationControls.appendChild(createPageButton('1', 1));
-        if (startPage > 2) {
-            const dots = document.createElement('li');
-            dots.className = 'page-item disabled';
-            dots.innerHTML = '<span class="page-link">...</span>';
-            paginationControls.appendChild(dots);
-        }
-    }
-    
-    // Add visible page numbers
-    for (let i = startPage; i <= endPage; i++) {
-        const pageButton = createPageButton(i, i, false, i === currentPage);
-        paginationControls.appendChild(pageButton);
-    }
-    
-    // Add last page and dots if needed
-    if (endPage < totalPages) {
-        if (endPage < totalPages - 1) {
-            const dots = document.createElement('li');
-            dots.className = 'page-item disabled';
-            dots.innerHTML = '<span class="page-link">...</span>';
-            paginationControls.appendChild(dots);
-        }
-        paginationControls.appendChild(createPageButton(totalPages, totalPages));
-    }
-    
-    // Next button
-    const nextButton = createPageButton('»', currentPage + 1, currentPage === totalPages);
-    paginationControls.appendChild(nextButton);
-}
-
-function createPageButton(text, page, disabled = false, active = false) {
-    const li = document.createElement('li');
-    li.className = `page-item ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}`;
-    
-    const link = document.createElement('a');
-    link.className = 'page-link';
-    link.href = '#';
-    link.textContent = text;
-    
-    if (!disabled) {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const totalPages = Math.ceil(totalRows / rowsPerPage);
-            if (page >= 1 && page <= totalPages) {
-                currentPage = page;
-                showPage();
-            }
-        });
-    }
-    
-    li.appendChild(link);
-    return li;
-}
 
 function initChart() {
     console.log('Initializing chart...');
@@ -450,7 +263,7 @@ function initChart() {
     // Process report data and map to categories
     if (reportData && Array.isArray(reportData)) {
         reportData.forEach(item => {
-            if (item && item.JENIS_PERKARA && typeof item.TOTAL !== 'undefined') {
+            if (item && item.JENIS_PERKARA && typeof item.JUMLAH !== 'undefined') {
                 const jenis = item.JENIS_PERKARA.toUpperCase();
                 let mappedJenis = 'Perkara Lainnya'; // default category
                 
@@ -469,7 +282,7 @@ function initChart() {
                     mappedJenis = 'OHARDA';
                 }
                 
-                chartData[mappedJenis] += parseInt(item.TOTAL) || 0;
+                chartData[mappedJenis] += parseInt(item.JUMLAH) || 0;
             }
         });
     }
@@ -477,18 +290,13 @@ function initChart() {
     // Prepare chart configuration
     const labels = jenisPerkaraList;
     const values = jenisPerkaraList.map(jenis => chartData[jenis]);
-    const colors = [
-        '#FF6384', // Narkoba - Red
-        '#36A2EB', // Perkara Anak - Blue
-        '#FFCE56', // Kesusilaan - Yellow
-        '#4BC0C0', // Judi - Teal
-        '#9966FF', // KDRT - Purple
-        '#FF9F40', // OHARDA - Orange
-        '#96CEB4'  // Perkara Lainnya - Green
-    ];
+    
+    // Single color for all bars
+    const chartColor = '#96CEB4';  // Hijau mint - same color for all
     
     console.log('Chart labels:', labels);
     console.log('Chart values:', values);
+    console.log('Chart color:', chartColor);
     
     // Create the chart
     try {
@@ -523,9 +331,9 @@ function initChart() {
                 datasets: [{
                     label: 'Jumlah Kasus',
                     data: values,
-                    backgroundColor: colors,
-                    borderColor: colors,
-                    borderWidth: 1
+                    backgroundColor: chartColor,
+                    borderColor: chartColor,
+                    borderWidth: 2
                 }]
             },
             options: {
