@@ -52,6 +52,11 @@ pip install -r requirements.txt
 
 2. Jalankan aplikasi:
 ```bash
+python run.py
+```
+
+Atau jalankan langsung dari folder src:
+```bash
 python src/app_with_db.py
 ```
 
