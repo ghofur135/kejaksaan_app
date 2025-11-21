@@ -577,6 +577,17 @@ class MySQLDatabase:
                 print(f"Error creating user: {e}")
                 return False
 
+    def execute_query(self, query, params=None):
+        """Execute a custom query and return results"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+            rows = cursor.fetchall()
+            return rows
+
 # Create a singleton instance
 db = MySQLDatabase()
 
