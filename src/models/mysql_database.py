@@ -26,20 +26,48 @@ class MySQLDatabase:
                 conn.close()
     
     def init_database(self):
-        """Initialize database with required tables"""
-        # This will be handled by the SQL schema file
-        pass
+        """Initialize database with required tables and run migrations"""
+        # Run migrations to ensure schema is up to date
+        self._run_migrations()
+
+    def _run_migrations(self):
+        """Run database migrations to ensure schema is up to date"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor(dictionary=True)
+
+                # Check if identitas_tersangka column exists in pidum_data
+                cursor.execute("""
+                    SELECT COUNT(*) as count
+                    FROM information_schema.COLUMNS
+                    WHERE TABLE_SCHEMA = DATABASE()
+                    AND TABLE_NAME = 'pidum_data'
+                    AND COLUMN_NAME = 'identitas_tersangka'
+                """)
+                result = cursor.fetchone()
+
+                if result['count'] == 0:
+                    # Add the column
+                    print("Migration: Adding 'identitas_tersangka' column to pidum_data...")
+                    cursor.execute("""
+                        ALTER TABLE pidum_data
+                        ADD COLUMN identitas_tersangka TEXT AFTER tahapan_penanganan
+                    """)
+                    conn.commit()
+                    print("Migration completed: 'identitas_tersangka' column added.")
+        except Exception as e:
+            print(f"Migration check/update skipped: {e}")
     
     def insert_pidum_data(self, data):
         """Insert PIDUM data into database"""
         with self.get_connection() as conn:
             cursor = conn.cursor(dictionary=True)
             query = '''
-                INSERT INTO pidum_data (no, periode, tanggal, jenis_perkara, tahapan_penanganan, keterangan)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO pidum_data (no, periode, tanggal, jenis_perkara, tahapan_penanganan, identitas_tersangka, keterangan)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
             '''
             cursor.execute(query, (data['NO'], data['PERIODE'], data['TANGGAL'], data['JENIS PERKARA'],
-                                  data['TAHAPAN_PENANGANAN'], data['KETERANGAN']))
+                                  data['TAHAPAN_PENANGANAN'], data.get('IDENTITAS_TERSANGKA', ''), data['KETERANGAN']))
             conn.commit()
             return cursor.lastrowid
     
@@ -83,6 +111,7 @@ class MySQLDatabase:
                 'TANGGAL': row['tanggal'],
                 'JENIS PERKARA': row['jenis_perkara'],
                 'TAHAPAN PENANGANAN': row['tahapan_penanganan'],
+                'IDENTITAS TERSANGKA': row.get('identitas_tersangka', ''),
                 'KETERANGAN': row['keterangan']
             })
         return export_data
@@ -126,11 +155,11 @@ class MySQLDatabase:
             cursor = conn.cursor(dictionary=True)
             query = '''
                 UPDATE pidum_data
-                SET no=%s, periode=%s, tanggal=%s, jenis_perkara=%s, tahapan_penanganan=%s, keterangan=%s
+                SET no=%s, periode=%s, tanggal=%s, jenis_perkara=%s, tahapan_penanganan=%s, identitas_tersangka=%s, keterangan=%s
                 WHERE id=%s
             '''
             cursor.execute(query, (data['NO'], data['PERIODE'], data['TANGGAL'], data['JENIS PERKARA'],
-                                  data['TAHAPAN_PENANGANAN'], data['KETERANGAN'], item_id))
+                                  data['TAHAPAN_PENANGANAN'], data.get('IDENTITAS_TERSANGKA', ''), data['KETERANGAN'], item_id))
             conn.commit()
             return cursor.rowcount > 0
     

@@ -178,6 +178,43 @@ class PDFtoCSVConverter:
         self.log_text.see(tk.END)
         self.root.update_idletasks()
 
+    def clean_text(self, text):
+        """
+        PERBAIKAN: Membersihkan text dari newline, carriage return, dan whitespace berlebih
+        """
+        if not text:
+            return ""
+        
+        # Replace newline dan carriage return dengan spasi
+        text = text.replace('\n', ' ').replace('\r', ' ')
+        text = text.replace('\t', ' ')
+        
+        # Hapus multiple spaces jadi single space
+        text = ' '.join(text.split())
+        
+        return text.strip()
+
+    def is_header_row(self, no, tgl_nomor, identitas_tersangka, pasal):
+        """
+        PERBAIKAN: Cek apakah row adalah header (bukan data)
+        """
+        # List kata-kata yang biasanya ada di header
+        header_keywords = [
+            'No.', 'Urut', 'Tgl.', 'diterima', 'Kejaksaan', 
+            'Nomor', 'Identitas', 'Tersangka', 'Pasal', 
+            'disangkakan', 'Pemberitahuan', 'Dimulainya'
+        ]
+        
+        # Gabungkan semua field untuk dicek
+        combined = f"{no} {tgl_nomor} {identitas_tersangka} {pasal}".lower()
+        
+        # Jika mengandung keyword header dan bukan angka di kolom No
+        for keyword in header_keywords:
+            if keyword.lower() in combined and not no.isdigit():
+                return True
+        
+        return False
+
     def detect_format(self, pdf_path):
         """Detect PDF format based on content"""
         try:
@@ -202,7 +239,7 @@ class PDFtoCSVConverter:
     def extract_spdp_format(self, pdf_path):
         """
         Extract data from REGISTER PENERIMAAN SPDP format
-        MODIFIKASI: Menambahkan kolom Identitas Tersangka (kolom 4)
+        PERBAIKAN: Membersihkan newline characters dan filter header ganda
         Mengambil 4 kolom: No, Tgl_Nomor, Identitas_Tersangka, Pasal_yang_Disangkakan
         """
         all_data = []
@@ -217,33 +254,46 @@ class PDFtoCSVConverter:
                     if not table or len(table) < 2:
                         continue
                     
-                    for row in table[1:]:  # Skip header
+                    for row in table[1:]:  # Skip header pertama
                         if row and len(row) > 7:
                             # Kolom 0: No
                             no = row[0] if row[0] else ""
                             
-                            # Kolom 3: Tgl_Nomor (kolom "Tgl." dan "Nomor" di PDF)
+                            # Kolom 3: Tgl_Nomor
                             tgl_nomor = row[3] if len(row) > 3 and row[3] else ""
                             
-                            # Kolom 4: Identitas Tersangka (BARU DITAMBAHKAN)
+                            # Kolom 4: Identitas Tersangka
                             identitas_tersangka = row[4] if len(row) > 4 and row[4] else ""
                             
                             # Kolom 7: Pasal yang Disangkakan
                             pasal = row[7] if len(row) > 7 and row[7] else ""
                             
-                            # Filter baris yang valid (minimal ada nomor atau pasal)
-                            if no.strip() or pasal.strip():
+                            # PERBAIKAN: Bersihkan newline dan whitespace berlebih
+                            no = self.clean_text(no)
+                            tgl_nomor = self.clean_text(tgl_nomor)
+                            identitas_tersangka = self.clean_text(identitas_tersangka)
+                            pasal = self.clean_text(pasal)
+                            
+                            # Filter: Skip baris header ganda atau baris kosong
+                            if self.is_header_row(no, tgl_nomor, identitas_tersangka, pasal):
+                                continue
+                            
+                            # Filter baris yang valid (minimal ada nomor yang merupakan angka)
+                            if no and (no.isdigit() or pasal.strip()):
                                 all_data.append({
-                                    'No': no.strip(),
-                                    'Tgl_Nomor': tgl_nomor.strip(),
-                                    'Identitas_Tersangka': identitas_tersangka.strip(),
-                                    'Pasal_yang_Disangkakan': pasal.strip()
+                                    'No': no,
+                                    'Tgl_Nomor': tgl_nomor,
+                                    'Identitas_Tersangka': identitas_tersangka,
+                                    'Pasal_yang_Disangkakan': pasal
                                 })
         
         return pd.DataFrame(all_data)
 
     def extract_penuntutan_format(self, pdf_path):
-        """Extract data from REGISTER PENUNTUTAN format"""
+        """
+        Extract data from REGISTER PENUNTUTAN format
+        PERBAIKAN: Ditambahkan text cleaning
+        """
         all_data = []
         
         with pdfplumber.open(pdf_path) as pdf:
@@ -264,19 +314,33 @@ class PDFtoCSVConverter:
                             tindak_pidana = row[3] if len(row) > 3 and row[3] else ""
                             jaksa_penuntut = row[4] if len(row) > 4 and row[4] else ""
                             
-                            if no.strip() or identitas.strip():
+                            # PERBAIKAN: Bersihkan text
+                            no = self.clean_text(no)
+                            no_tgl_register = self.clean_text(no_tgl_register)
+                            identitas = self.clean_text(identitas)
+                            tindak_pidana = self.clean_text(tindak_pidana)
+                            jaksa_penuntut = self.clean_text(jaksa_penuntut)
+                            
+                            # Filter header row
+                            if self.is_header_row(no, no_tgl_register, identitas, tindak_pidana):
+                                continue
+                            
+                            if no and (no.isdigit() or identitas.strip()):
                                 all_data.append({
-                                    'No': no.strip(),
-                                    'No_Tanggal_Register_Perkara': no_tgl_register.strip(),
-                                    'Identitas_Tersangka': identitas.strip(),
-                                    'Tindak_Pidana_Didakwakan': tindak_pidana.strip(),
-                                    'Jaksa_Penuntut_Umum': jaksa_penuntut.strip()
+                                    'No': no,
+                                    'No_Tanggal_Register_Perkara': no_tgl_register,
+                                    'Identitas_Tersangka': identitas,
+                                    'Tindak_Pidana_Didakwakan': tindak_pidana,
+                                    'Jaksa_Penuntut_Umum': jaksa_penuntut
                                 })
         
         return pd.DataFrame(all_data)
 
     def extract_upaya_hukum_format(self, pdf_path):
-        """Extract data from REGISTER UPAYA HUKUM (RP-11) format"""
+        """
+        Extract data from REGISTER UPAYA HUKUM (RP-11) format
+        PERBAIKAN: Ditambahkan text cleaning
+        """
         all_data = []
         
         with pdfplumber.open(pdf_path) as pdf:
@@ -296,12 +360,18 @@ class PDFtoCSVConverter:
                             kasasi = row[15] if len(row) > 15 and row[15] else ""
                             pk = row[22] if len(row) > 22 and row[22] else ""
                             
-                            if no.strip():
+                            # PERBAIKAN: Bersihkan text
+                            no = self.clean_text(no)
+                            banding = self.clean_text(banding)
+                            kasasi = self.clean_text(kasasi)
+                            pk = self.clean_text(pk)
+                            
+                            if no and no.isdigit():
                                 all_data.append({
-                                    'No': no.strip(),
-                                    'Banding': banding.strip(),
-                                    'Kasasi': kasasi.strip(),
-                                    'PK': pk.strip()
+                                    'No': no,
+                                    'Banding': banding,
+                                    'Kasasi': kasasi,
+                                    'PK': pk
                                 })
         
         return pd.DataFrame(all_data)
@@ -334,11 +404,13 @@ class PDFtoCSVConverter:
             # Extract data based on format
             if format_type == "spdp":
                 df = self.extract_spdp_format(self.pdf_path)
-                self.log_message("MODIFIKASI: Mengekstrak dengan kolom Identitas Tersangka")
+                self.log_message("PERBAIKAN: Text cleaning & filter header ganda aktif")
             elif format_type == "penuntutan":
                 df = self.extract_penuntutan_format(self.pdf_path)
+                self.log_message("PERBAIKAN: Text cleaning aktif")
             elif format_type == "upaya_hukum":
                 df = self.extract_upaya_hukum_format(self.pdf_path)
+                self.log_message("PERBAIKAN: Text cleaning aktif")
             else:
                 raise ValueError(f"Unknown format: {format_type}")
             

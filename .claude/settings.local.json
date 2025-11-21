@@ -4,7 +4,18 @@
       "Bash(python:*)",
       "Bash(powershell -Command \"(Get-Item ''D:\\my-project\\kejaksaan_app\\csv\\REGISTER_PENERIMAAN_SPDP_JANUARI_S_D_JUNI_extracted_20251031_092415.csv'').Length / 1KB\")",
       "Bash(netstat:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "WebFetch(domain:127.0.0.1)",
+      "Bash(pip install:*)",
+      "Bash(\"D:\\my-project\\kejaksaan_app\\venv\\Scripts\\python.exe\":*)",
+      "Bash(\"D:\\my-project\\kejaksaan_app\\venv\\Scripts\\pip.exe\" install python-dotenv)",
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(nul)",
+      "Bash(dir:*)",
+      "Bash(copy:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(\"D:\\my-project\\kejaksaan_app\\venv\\Scripts\\python.exe\" -c:*)",
+      "Bash(cmd //c \"taskkill //F //PID 7364\")"
     ],
     "deny": [],
     "ask": []

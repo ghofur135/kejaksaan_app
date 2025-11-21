@@ -22,6 +22,7 @@ CREATE TABLE pidum_data (
     tanggal DATE NOT NULL,
     jenis_perkara VARCHAR(100) NOT NULL,
     tahapan_penanganan VARCHAR(50) NOT NULL DEFAULT 'PRA PENUNTUTAN',
+    identitas_tersangka TEXT,
     keterangan TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_tanggal (tanggal),
@@ -58,6 +59,12 @@ CREATE TABLE users (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Insert default admin user (password: P@ssw0rd25#!)
-INSERT INTO users (username, password) VALUES 
+INSERT INTO users (username, password) VALUES
 ('admin', 'a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e1')
 ON DUPLICATE KEY UPDATE username = username;
+
+-- =====================================================
+-- MIGRATION: Add identitas_tersangka column to existing pidum_data table
+-- Run this if you already have an existing database
+-- =====================================================
+-- ALTER TABLE pidum_data ADD COLUMN identitas_tersangka TEXT AFTER tahapan_penanganan;

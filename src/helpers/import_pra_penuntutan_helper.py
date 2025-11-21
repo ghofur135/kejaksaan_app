@@ -1,6 +1,6 @@
 """
 Import Helper khusus untuk data Pra Penuntutan
-Format CSV: No, Tgl_Nomor, Pasal_yang_Disangkakan
+Format CSV: No, Tgl_Nomor, Pasal_yang_Disangkakan, Identitas_Tersangka (opsional)
 """
 
 import pandas as pd
@@ -72,7 +72,7 @@ def cleanup_import_temp_file(session_id):
             print(f"Error removing temp file: {e}")
 
 def extract_date_from_tgl_nomor(tgl_nomor_value):
-    """Extract date from Tgl_Nomor field like '2025-08-28 SPDP/63/VIII/RES.1.24/2025/Reskrim'"""
+    """Extract date from Tgl_Nomor field like '2025-08-28 SPDP/63/VIII/RES.1.24/2025/Reskrim' or just '2025-08-28'"""
     if not tgl_nomor_value:
         return datetime.now().strftime('%Y-%m-%d')
     
@@ -114,11 +114,13 @@ def get_jenis_perkara_suggestions_pra_penuntutan(pasal_text):
     mappings = {
         'NARKOBA': [
             'UU RI NOMOR 35 TAHUN 2009', 'UU NOMOR 35 TAHUN 2009', 'NARKOTIKA',
-            'PASAL 114', 'PASAL 112', 'PASAL 127', 'PASAL 117', 'PASAL 119', 'PASAL 120'
+            'PASAL 114', 'PASAL 112', 'PASAL 127', 'PASAL 117', 'PASAL 119', 'PASAL 120',
+            'NARKOTIKA', 'NARKOBA', 'PSIKOTROPIKA'
         ],
         'PERKARA ANAK': [
             'UU NOMOR 17 TAHUN 2016', 'UU NOMOR 23 TAHUN 2002', 'PERLINDUNGAN ANAK',
-            'PASAL 81', 'PASAL 82', 'PERUBAHAN KEDUA ATAS UNDANG-UNDANG NOMOR 23 TAHUN 2002'
+            'PASAL 81', 'PASAL 82', 'PERUBAHAN KEDUA ATAS UNDANG-UNDANG NOMOR 23 TAHUN 2002',
+            'PERLINDUNGAN ANAK', 'ANAK', 'PENETAPAN PERPU NO. 1 TAHUN 2016'
         ],
         'KESUSILAAN': [
             'KESUSILAAN', 'SUSILA', 'MORAL', 'CABUL', 'PERKOSAAN',
@@ -126,10 +128,10 @@ def get_jenis_perkara_suggestions_pra_penuntutan(pasal_text):
         ],
         'OHARDA': [
             'PASAL 362', 'PASAL 363', 'PASAL 365', 'PASAL 368', 'PASAL 372', 'PASAL 374', 'PASAL 378',
-            'PENCURIAN', 'PENGGELAPAN', 'PENIPUAN', 'PEMERASAN'
+            'PENCURIAN', 'PENGGELAPAN', 'PENIPUAN', 'PEMERASAN', 'KUHP'
         ],
         'JUDI': [
-            'JUDI', 'GAMBLING', 'TOGEL', 'TARUHAN'
+            'JUDI', 'GAMBLING', 'TOGEL', 'TARUHAN', 'PASAL 303'
         ],
         'KDRT': [
             'KDRT', 'KEKERASAN DALAM RUMAH TANGGA', 'DOMESTIC VIOLENCE',
@@ -139,7 +141,8 @@ def get_jenis_perkara_suggestions_pra_penuntutan(pasal_text):
             'PERLINDUNGAN DATA PRIBADI', 'UU NOMOR 27 TAHUN 2022', 'PASAL 67', 'PASAL 65',
             'MINYAK DAN GAS BUMI', 'UU NO. 22 TAHUN 2021', 'PERLINDUNGAN KONSUMEN',
             'UU NO. 8 TAHUN 1999', 'METROLOGI LEGAL', 'UU NO. 2 TAHUN 1981',
-            'JAMINAN FIDUSIA', 'UU NOMOR 42 TAHUN 1999'
+            'JAMINAN FIDUSIA', 'UU NOMOR 42 TAHUN 1999', 'UNDANG-UNDANG DARURAT',
+            'KESEHATAN', 'UU RI NO. 22 TAHUN 2009'
         ]
     }
     
@@ -157,33 +160,85 @@ def process_pra_penuntutan_import_file(file):
         filename = secure_filename(file.filename)
         file_ext = filename.rsplit('.', 1)[1].lower()
         
-        # Read file based on extension
+        # Read file based on extension with encoding handling
         if file_ext == 'csv':
-            df = pd.read_csv(file)
+            try:
+                df = pd.read_csv(file, encoding='utf-8')
+            except UnicodeDecodeError:
+                try:
+                    df = pd.read_csv(file, encoding='latin-1')
+                except UnicodeDecodeError:
+                    df = pd.read_csv(file, encoding='cp1252')
         elif file_ext in ['xlsx', 'xls']:
             df = pd.read_excel(file)
         else:
             raise ValueError("Format file tidak didukung. Gunakan CSV, XLS, atau XLSX.")
         
-        # Validate required columns
-        required_columns = ['No', 'Tgl_Nomor', 'Pasal_yang_Disangkakan']
-        missing_columns = [col for col in required_columns if col not in df.columns]
+        # Clean column names - remove BOM and whitespace
+        df.columns = df.columns.str.replace('\ufeff', '').str.strip()
         
-        if missing_columns:
-            raise ValueError(f"Kolom yang diperlukan tidak ditemukan: {', '.join(missing_columns)}")
+        # Validate required columns - check for exact names or variations
+        required_columns_variations = {
+            'No': ['No', 'NO', 'no', 'Nomor', 'NOMOR'],
+            'Tgl_Nomor': ['Tgl_Nomor', 'Tgl Nomor', 'Tanggal', 'TANGGAL', 'tgl_nomor'],
+            'Pasal_yang_Disangkakan': ['Pasal_yang_Disangkakan', 'Pasal yang Disangkakan', 'Pasal', 'PASAL', 'pasal_yang_disangkakan']
+        }
+
+        # Optional columns
+        optional_columns_variations = {
+            'Identitas_Tersangka': ['Identitas_Tersangka', 'Identitas Tersangka', 'identitas_tersangka', 'IDENTITAS_TERSANGKA', 'Tersangka', 'TERSANGKA', 'Nama_Tersangka', 'Nama Tersangka']
+        }
+        
+        found_columns = {}
+        for required_col, variations in required_columns_variations.items():
+            found = False
+            for var in variations:
+                if var in df.columns:
+                    found_columns[required_col] = var
+                    found = True
+                    break
+            if not found:
+                raise ValueError(f"Kolom yang diperlukan tidak ditemukan: {required_col}. Kolom yang tersedia: {list(df.columns)}")
+
+        # Find optional columns
+        for optional_col, variations in optional_columns_variations.items():
+            for var in variations:
+                if var in df.columns:
+                    found_columns[optional_col] = var
+                    print(f"[DEBUG] Found optional column '{optional_col}' as '{var}'")
+                    break
+
+        # Debug: Print all found columns and DataFrame columns
+        print(f"[DEBUG] DataFrame columns: {list(df.columns)}")
+        print(f"[DEBUG] Found columns mapping: {found_columns}")
         
         # Convert DataFrame to standardized format
         standardized_data = []
         
         for i, row in df.iterrows():
-            # Extract and clean data
-            no = str(row.get('No', i + 1)).strip()
-            tgl_nomor = str(row.get('Tgl_Nomor', '')).strip()
-            pasal_disangkakan = str(row.get('Pasal_yang_Disangkakan', '')).strip()
-            
+            # Extract and clean data using the found column names
+            no = str(row.get(found_columns['No'], i + 1)).strip()
+            tgl_nomor = str(row.get(found_columns['Tgl_Nomor'], '')).strip()
+            pasal_disangkakan = str(row.get(found_columns['Pasal_yang_Disangkakan'], '')).strip()
+
+            # Get optional identitas tersangka
+            identitas_tersangka = ''
+            if 'Identitas_Tersangka' in found_columns:
+                raw_value = row.get(found_columns['Identitas_Tersangka'], '')
+                identitas_tersangka = str(raw_value).strip()
+                if identitas_tersangka.lower() == 'nan':
+                    identitas_tersangka = ''
+                # Debug first 3 rows
+                if i < 3:
+                    print(f"[DEBUG] Row {i}: raw_value={repr(raw_value)}, identitas_tersangka={repr(identitas_tersangka)}")
+
+            # Skip empty rows
+            if not no or not tgl_nomor or not pasal_disangkakan:
+                continue
+
             # Extract date from Tgl_Nomor
             extracted_date = extract_date_from_tgl_nomor(tgl_nomor)
-            
+
             # Create standardized row
             std_row = {
                 'ROW_INDEX': i,
@@ -194,7 +249,8 @@ def process_pra_penuntutan_import_file(file):
                 'KETERANGAN': f"SPDP: {tgl_nomor} | Pasal: {pasal_disangkakan}",
                 'TAHAPAN_PENANGANAN': 'PRA PENUNTUTAN',
                 'TGL_NOMOR_ORIGINAL': tgl_nomor,
-                'PASAL_ORIGINAL': pasal_disangkakan
+                'PASAL_ORIGINAL': pasal_disangkakan,
+                'IDENTITAS_TERSANGKA': identitas_tersangka
             }
             
             # Get suggested jenis perkara
@@ -224,19 +280,20 @@ def process_pra_penuntutan_import_file(file):
 def prepare_pra_penuntutan_data_for_db(import_data, form_data):
     """Prepare pra penuntutan data for database insertion"""
     prepared_data = []
-    
+
     for i, original_row in enumerate(import_data):
         # Check if this row should be included (not removed)
         jenis_perkara_key = f'jenis_perkara_{i}'
         if jenis_perkara_key not in form_data:
             continue  # Skip removed rows
-        
+
         # Get form data for this row
         periode = form_data.get(f'periode_{i}', '1')
         tanggal = form_data.get(f'tanggal_{i}', original_row.get('TANGGAL'))
         jenis_perkara = form_data.get(jenis_perkara_key, 'PERKARA LAINNYA')
         keterangan = form_data.get(f'keterangan_{i}', original_row.get('KETERANGAN', ''))
-        
+        identitas_tersangka = form_data.get(f'identitas_tersangka_{i}', original_row.get('IDENTITAS_TERSANGKA', ''))
+
         # Prepare data for database insertion
         prepared_row = {
             'NO': str(original_row.get('NO', i + 1)),
@@ -244,9 +301,10 @@ def prepare_pra_penuntutan_data_for_db(import_data, form_data):
             'TANGGAL': tanggal,
             'JENIS PERKARA': jenis_perkara,
             'TAHAPAN_PENANGANAN': 'PRA PENUNTUTAN',
+            'IDENTITAS_TERSANGKA': str(identitas_tersangka),
             'KETERANGAN': str(keterangan)
         }
-        
+
         prepared_data.append(prepared_row)
-    
+
     return prepared_data

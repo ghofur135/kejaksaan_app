@@ -1857,6 +1857,16 @@ def import_pra_penuntutan_api():
             result = process_pra_penuntutan_import_file(file)
             
             if result['success']:
+                # DEBUG: Print first row data
+                print("=" * 50)
+                print("[DEBUG ROUTE] Import successful!")
+                print(f"[DEBUG ROUTE] Total rows: {result['total_rows']}")
+                print(f"[DEBUG ROUTE] Columns from CSV: {result.get('columns', [])}")
+                if result['data'] and len(result['data']) > 0:
+                    print(f"[DEBUG ROUTE] First row keys: {list(result['data'][0].keys())}")
+                    print(f"[DEBUG ROUTE] First row IDENTITAS_TERSANGKA: {repr(result['data'][0].get('IDENTITAS_TERSANGKA', 'NOT_FOUND'))}")
+                print("=" * 50)
+
                 # Store import data in temporary file instead of session (to avoid size limits)
                 from helpers.import_pra_penuntutan_helper import save_import_data_to_temp
                 session_id = save_import_data_to_temp(result['data'], file.filename)
