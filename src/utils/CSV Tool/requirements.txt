@@ -1,0 +1,3 @@
+# PDF to CSV Converter Dependencies
+pdfplumber>=0.7.0
+pandas>=1.3.0
