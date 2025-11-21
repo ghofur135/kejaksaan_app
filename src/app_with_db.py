@@ -83,7 +83,7 @@ def generate_pidum_chart(report_data):
     
     return chart_base64
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='../templates', static_folder='../static')
 app.secret_key = 'your_secret_key_here'
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB max file size
 app.config['TEMPLATES_AUTO_RELOAD'] = True  # Force reload templates on change
@@ -177,7 +177,7 @@ def laporan_pidum_bulanan():
     from collections import defaultdict
     
     # Get database connection
-    conn = sqlite3.connect('db/kejaksaan.db')
+    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
@@ -489,7 +489,7 @@ def view_pidum():
     end_date = request.args.get('end_date')
 
     import sqlite3
-    conn = sqlite3.connect('db/kejaksaan.db')
+    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
@@ -563,7 +563,7 @@ def view_pidsus():
         per_page = 10
 
     import sqlite3
-    conn = sqlite3.connect('db/kejaksaan.db')
+    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
@@ -792,7 +792,7 @@ def laporan_pidum():
     import sqlite3
     from collections import defaultdict
 
-    conn = sqlite3.connect('db/kejaksaan.db')
+    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
@@ -1036,7 +1036,7 @@ def laporan_pidum_new():
     from collections import defaultdict
     
     # Get database connection
-    conn = sqlite3.connect('db/kejaksaan.db')
+    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
@@ -1206,7 +1206,7 @@ def export_pidum_excel():
     
     # Apply filters to data retrieval
     import sqlite3
-    conn = sqlite3.connect('db/kejaksaan.db')
+    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
@@ -1318,7 +1318,7 @@ def export_pidum_new_excel():
     from collections import defaultdict
     
     # Get database connection
-    conn = sqlite3.connect('db/kejaksaan.db')
+    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
@@ -1477,7 +1477,7 @@ def export_pidum_new_word():
     import sqlite3
     
     # Get database connection
-    conn = sqlite3.connect('db/kejaksaan.db')
+    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
@@ -2345,12 +2345,13 @@ def confirm_import_pidum():
     return redirect(url_for('view_pidum'))
 
 # Register PDF conversion routes
-try:
-    from pdf_routes import register_pdf_routes
-    register_pdf_routes(app)
-    print("PDF conversion routes registered successfully")
-except ImportError as e:
-    print(f"Warning: Could not register PDF routes: {e}")
+# PDF routes module not available, commented out
+# try:
+#     from pdf_routes import register_pdf_routes
+#     register_pdf_routes(app)
+#     print("PDF conversion routes registered successfully")
+# except ImportError as e:
+#     print(f"Warning: Could not register PDF routes: {e}")
 
 @app.route('/laporan_pidsus')
 @login_required
@@ -2376,7 +2377,7 @@ def laporan_pidsus():
     import sqlite3
     from collections import defaultdict
 
-    conn = sqlite3.connect('db/kejaksaan.db')
+    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
@@ -2572,7 +2573,7 @@ def laporan_pidsus_bulanan():
     from collections import defaultdict
     
     # Get database connection
-    conn = sqlite3.connect('db/kejaksaan.db')
+    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
@@ -2675,7 +2676,7 @@ def laporan_pidsus_new():
     from collections import defaultdict
     
     # Get database connection
-    conn = sqlite3.connect('db/kejaksaan.db')
+    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
@@ -2833,7 +2834,7 @@ def export_pidsus_new_excel():
     from collections import defaultdict
     
     # Get database connection
-    conn = sqlite3.connect('db/kejaksaan.db')
+    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
@@ -2988,7 +2989,7 @@ def export_pidsus_new_word():
     import sqlite3
     
     # Get database connection
-    conn = sqlite3.connect('db/kejaksaan.db')
+    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     

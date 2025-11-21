@@ -5,7 +5,7 @@ Migration script to update database schema for tahapan penanganan system
 
 import sqlite3
 import os
-from database import DATABASE_PATH
+from src.models.database import DATABASE_PATH
 
 def migrate_database():
     """Migrate database to new schema with tahapan_penanganan and keterangan"""

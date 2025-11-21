@@ -6,7 +6,7 @@ Periode: Agustus - Oktober 2025 (30 data per bulan = 90 total)
 
 import random
 from datetime import datetime, date, timedelta
-from database import insert_pidum_data, get_database_stats, delete_all_pidum_data
+from src.models.database import insert_pidum_data, get_database_stats, delete_all_pidum_data
 
 # Data dari file CSV nyata untuk template
 PRA_PENUNTUTAN_TEMPLATES = [

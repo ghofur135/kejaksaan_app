@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(powershell -Command \"(Get-Item ''D:\\my-project\\kejaksaan_app\\csv\\REGISTER_PENERIMAAN_SPDP_JANUARI_S_D_JUNI_extracted_20251031_092415.csv'').Length / 1KB\")",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

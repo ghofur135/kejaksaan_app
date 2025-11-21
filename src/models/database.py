@@ -3,7 +3,7 @@ import os
 from contextlib import contextmanager
 import hashlib
 
-DATABASE_PATH = os.path.join(os.path.dirname(__file__), 'db', 'kejaksaan.db')
+DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db')
 
 def init_database():
     """Initialize database with required tables"""

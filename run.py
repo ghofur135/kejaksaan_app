@@ -13,5 +13,5 @@ from app_with_db import app
 
 if __name__ == '__main__':
     print("Starting Kejaksaan App...")
-    print(f"Database initialized at: {app.config.get('DATABASE_PATH', 'db/kejaksaan.db')}")
+    print(f"Database initialized at: {app.config.get('DATABASE_PATH', os.path.join(os.path.dirname(__file__), 'db', 'kejaksaan.db'))}")
     app.run(host='0.0.0.0', port=5001, debug=True)

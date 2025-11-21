@@ -6,7 +6,7 @@ Periode: Agustus - Oktober 2025
 
 import random
 from datetime import datetime, date, timedelta
-from database import insert_pidum_data, get_database_stats
+from src.models.database import insert_pidum_data, get_database_stats
 
 # Data dummy untuk generate
 JENIS_PERKARA_LIST = [
