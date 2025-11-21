@@ -38,7 +38,9 @@ def process_import_file(file, tahapan_penanganan=None):
                 'TANGGAL': '',
                 'JENIS_PERKARA_ORIGINAL': '',
                 'KETERANGAN': '',
-                'TAHAPAN_PENANGANAN': tahapan_penanganan or 'PRA PENUNTUTAN'
+                'TAHAPAN_PENANGANAN': tahapan_penanganan or 'PRA PENUNTUTAN',
+                'IDENTITAS_TERSANGKA': '',
+                'JAKSA_PENUNTUT_UMUM': ''
             }
             
             # Handle Tindak_Pidana_Didakwakan for jenis perkara analysis
@@ -112,17 +114,11 @@ def process_import_file(file, tahapan_penanganan=None):
                         # Fallback to current date if parsing fails
                         std_row['TANGGAL'] = datetime.now().strftime('%Y-%m-%d')
                 elif 'IDENTITAS_TERSANGKA' in clean_key:
-                    # Store suspect identity as part of keterangan
-                    if std_row['KETERANGAN']:
-                        std_row['KETERANGAN'] += f" | Tersangka: {clean_value}"
-                    else:
-                        std_row['KETERANGAN'] = f"Tersangka: {clean_value}"
+                    # Store suspect identity in separate field
+                    std_row['IDENTITAS_TERSANGKA'] = clean_value
                 elif 'JAKSA_PENUNTUT_UMUM' in clean_key:
-                    # Store prosecutor information as part of keterangan
-                    if std_row['KETERANGAN']:
-                        std_row['KETERANGAN'] += f" | JPU: {clean_value}"
-                    else:
-                        std_row['KETERANGAN'] = f"JPU: {clean_value}"
+                    # Store prosecutor information in separate field
+                    std_row['JAKSA_PENUNTUT_UMUM'] = clean_value
             
             # Use tindak pidana for jenis perkara suggestion if available
             if tindak_pidana and not std_row['JENIS_PERKARA_ORIGINAL']:
@@ -218,9 +214,10 @@ def prepare_import_data(import_data, jenis_perkara_mapping):
             'TANGGAL': tanggal,
             'JENIS PERKARA': selected_jenis_perkara,
             'TAHAPAN_PENANGANAN': row.get('TAHAPAN_PENANGANAN', 'PRA PENUNTUTAN'),
+            'IDENTITAS_TERSANGKA': str(row.get('IDENTITAS_TERSANGKA', '')),
             'KETERANGAN': str(row.get('KETERANGAN', ''))
         }
-        
+
         prepared_data.append(prepared_row)
     
     return prepared_data

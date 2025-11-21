@@ -2126,8 +2126,9 @@ def confirm_import_tahapan():
             periode = request.form.get(f'periode_{i}', '1')
             tanggal = request.form.get(f'tanggal_{i}', datetime.now().strftime('%Y-%m-%d'))
             jenis_perkara = request.form.get(jenis_perkara_key, 'PERKARA LAINNYA')
+            identitas_tersangka = request.form.get(f'identitas_tersangka_{i}', original_row.get('IDENTITAS_TERSANGKA', ''))
             keterangan = request.form.get(f'keterangan_{i}', '')
-            
+
             # Prepare data for database insertion
             prepared_row = {
                 'NO': str(original_row.get('NO', i + 1)),
@@ -2135,6 +2136,7 @@ def confirm_import_tahapan():
                 'TANGGAL': tanggal,
                 'JENIS PERKARA': jenis_perkara,
                 'TAHAPAN_PENANGANAN': tahapan_penanganan,
+                'IDENTITAS_TERSANGKA': str(identitas_tersangka),
                 'KETERANGAN': str(keterangan)
             }
             
