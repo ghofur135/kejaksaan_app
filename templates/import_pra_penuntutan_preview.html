@@ -56,8 +56,6 @@
                                         <small class="text-primary">{{ row.get('PASAL_ORIGINAL', '')[:60] }}{% if row.get('PASAL_ORIGINAL', '')|length > 60 %}...{% endif %}</small>
                                     </td>
                                     <td>
-                                        <!-- DEBUG: {{ row.keys()|list }} -->
-                                        <!-- DEBUG IDENTITAS: {{ row.get('IDENTITAS_TERSANGKA', 'EMPTY') }} -->
                                         <textarea class="form-control form-control-sm"
                                                   name="identitas_tersangka_{{ loop.index0 }}"
                                                   rows="2" style="font-size: 11px;" placeholder="Identitas tersangka...">{{ row.get('IDENTITAS_TERSANGKA', '') }}</textarea>

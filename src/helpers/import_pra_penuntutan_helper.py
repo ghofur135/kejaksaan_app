@@ -205,12 +205,7 @@ def process_pra_penuntutan_import_file(file):
             for var in variations:
                 if var in df.columns:
                     found_columns[optional_col] = var
-                    print(f"[DEBUG] Found optional column '{optional_col}' as '{var}'")
                     break
-
-        # Debug: Print all found columns and DataFrame columns
-        print(f"[DEBUG] DataFrame columns: {list(df.columns)}")
-        print(f"[DEBUG] Found columns mapping: {found_columns}")
         
         # Convert DataFrame to standardized format
         standardized_data = []
@@ -228,9 +223,6 @@ def process_pra_penuntutan_import_file(file):
                 identitas_tersangka = str(raw_value).strip()
                 if identitas_tersangka.lower() == 'nan':
                     identitas_tersangka = ''
-                # Debug first 3 rows
-                if i < 3:
-                    print(f"[DEBUG] Row {i}: raw_value={repr(raw_value)}, identitas_tersangka={repr(identitas_tersangka)}")
 
             # Skip empty rows
             if not no or not tgl_nomor or not pasal_disangkakan:
