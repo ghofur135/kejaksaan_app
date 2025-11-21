@@ -10,7 +10,7 @@ import io
 import base64
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
-from models.database import (
+from models.mysql_database import (
     init_database, insert_pidum_data, insert_pidsus_data,
     get_all_pidum_data, get_all_pidsus_data,
     get_pidum_data_for_export, get_pidsus_data_for_export,
@@ -173,75 +173,67 @@ def laporan_pidum_bulanan():
     bulan = request.args.get('bulan', type=int)
     
     from datetime import datetime
-    import sqlite3
     from collections import defaultdict
     
-    # Get database connection
-    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    
+    # Use MySQL database functions instead of direct SQLite connection
     # Build query with year and optional month filter
-    where_conditions = ["strftime('%Y', tanggal) = ?"]
+    where_conditions = ["YEAR(tanggal) = %s"]
     params = [str(tahun)]
     
     if bulan:
-        where_conditions.append("strftime('%m', tanggal) = ?")
+        where_conditions.append("MONTH(tanggal) = %s")
         params.append(f"{bulan:02d}")
     
     where_clause = "WHERE " + " AND ".join(where_conditions)
     
-    # Get data from pidum_data table
+    # Get data from pidum_data table using MySQL
     query = f"""
     SELECT periode, jenis_perkara, tanggal, tahapan_penanganan,
-           strftime('%m', tanggal) as bulan_num,
-           CASE strftime('%m', tanggal)
-               WHEN '01' THEN 'Januari'
-               WHEN '02' THEN 'Februari'
-               WHEN '03' THEN 'Maret'
-               WHEN '04' THEN 'April'
-               WHEN '05' THEN 'Mei'
-               WHEN '06' THEN 'Juni'
-               WHEN '07' THEN 'Juli'
-               WHEN '08' THEN 'Agustus'
-               WHEN '09' THEN 'September'
-               WHEN '10' THEN 'Oktober'
-               WHEN '11' THEN 'November'
-               WHEN '12' THEN 'Desember'
+           MONTH(tanggal) as bulan_num,
+           CASE MONTH(tanggal)
+               WHEN 1 THEN 'Januari'
+               WHEN 2 THEN 'Februari'
+               WHEN 3 THEN 'Maret'
+               WHEN 4 THEN 'April'
+               WHEN 5 THEN 'Mei'
+               WHEN 6 THEN 'Juni'
+               WHEN 7 THEN 'Juli'
+               WHEN 8 THEN 'Agustus'
+               WHEN 9 THEN 'September'
+               WHEN 10 THEN 'Oktober'
+               WHEN 11 THEN 'November'
+               WHEN 12 THEN 'Desember'
            END as bulan_nama
     FROM pidum_data {where_clause}
     ORDER BY bulan_num, jenis_perkara
     """
     
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
+    from models.mysql_database import db
+    rows = db.execute_query(query, params)
     
     # Get available months for filter dropdown
     month_query = f"""
-    SELECT DISTINCT strftime('%m', tanggal) as bulan_num,
-           CASE strftime('%m', tanggal)
-               WHEN '01' THEN 'Januari'
-               WHEN '02' THEN 'Februari'
-               WHEN '03' THEN 'Maret'
-               WHEN '04' THEN 'April'
-               WHEN '05' THEN 'Mei'
-               WHEN '06' THEN 'Juni'
-               WHEN '07' THEN 'Juli'
-               WHEN '08' THEN 'Agustus'
-               WHEN '09' THEN 'September'
-               WHEN '10' THEN 'Oktober'
-               WHEN '11' THEN 'November'
-               WHEN '12' THEN 'Desember'
+    SELECT DISTINCT MONTH(tanggal) as bulan_num,
+           CASE MONTH(tanggal)
+               WHEN 1 THEN 'Januari'
+               WHEN 2 THEN 'Februari'
+               WHEN 3 THEN 'Maret'
+               WHEN 4 THEN 'April'
+               WHEN 5 THEN 'Mei'
+               WHEN 6 THEN 'Juni'
+               WHEN 7 THEN 'Juli'
+               WHEN 8 THEN 'Agustus'
+               WHEN 9 THEN 'September'
+               WHEN 10 THEN 'Oktober'
+               WHEN 11 THEN 'November'
+               WHEN 12 THEN 'Desember'
            END as bulan_nama
     FROM pidum_data
-    WHERE strftime('%Y', tanggal) = ?
+    WHERE YEAR(tanggal) = %s
     ORDER BY bulan_num
     """
     
-    cursor.execute(month_query, [str(tahun)])
-    available_months = cursor.fetchall()
-    
-    conn.close()
+    available_months = db.execute_query(month_query, [str(tahun)])
     
     # Define all categories that should always appear
     predefined_categories = ['NARKOBA', 'PERKARA ANAK', 'KESUSILAAN', 'JUDI', 'KDRT', 'OHARDA', 'PERKARA LAINNYA']
@@ -488,34 +480,29 @@ def view_pidum():
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
 
-    import sqlite3
-    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    from models.mysql_database import db
 
     where_clauses = []
     params = []
 
     if start_date:
-        where_clauses.append("DATE(tanggal) >= DATE(?)")
+        where_clauses.append("DATE(tanggal) >= DATE(%s)")
         params.append(start_date)
 
     if end_date:
-        where_clauses.append("DATE(tanggal) <= DATE(?)")
+        where_clauses.append("DATE(tanggal) <= DATE(%s)")
         params.append(end_date)
 
     where_clause = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ''
-    filter_params = tuple(params)
 
     data_query = f"""
         SELECT id, no, periode, tanggal, jenis_perkara, tahapan_penanganan, keterangan, created_at
         FROM pidum_data {where_clause}
         ORDER BY DATE(tanggal) DESC, created_at DESC, id DESC
     """
-    cursor.execute(data_query, filter_params)
-    rows = cursor.fetchall()
+    rows = db.execute_query(data_query, params)
 
-    data = [dict(row) for row in rows]
+    data = rows
     total_records = len(data)
 
     total_pra_penuntutan = 0
@@ -534,8 +521,6 @@ def view_pidum():
 
         if (row.get('keterangan') or '').strip():
             total_keterangan += 1
-
-    conn.close()
 
     return render_template(
         'view_pidum.html',
@@ -562,27 +547,24 @@ def view_pidsus():
     if per_page not in (5, 10, 25, 50, 100):
         per_page = 10
 
-    import sqlite3
-    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    from models.mysql_database import db
 
     where_clauses = []
     params = []
 
     if start_date:
-        where_clauses.append("DATE(tanggal) >= DATE(?)")
+        where_clauses.append("DATE(tanggal) >= DATE(%s)")
         params.append(start_date)
 
     if end_date:
-        where_clauses.append("DATE(tanggal) <= DATE(?)")
+        where_clauses.append("DATE(tanggal) <= DATE(%s)")
         params.append(end_date)
 
     where_clause = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ''
 
-    count_query = f"SELECT COUNT(*) FROM pidsus_data {where_clause}"
-    cursor.execute(count_query, params)
-    total_records = cursor.fetchone()[0] or 0
+    count_query = f"SELECT COUNT(*) as count FROM pidsus_data {where_clause}"
+    count_result = db.execute_query(count_query, params)
+    total_records = count_result[0]['count'] if count_result else 0
 
     stats_query = f"""
         SELECT
@@ -591,12 +573,12 @@ def view_pidsus():
             SUM(CASE WHEN TRIM(COALESCE(keterangan, '')) <> '' THEN 1 ELSE 0 END) AS keterangan_count
         FROM pidsus_data {where_clause}
     """
-    cursor.execute(stats_query, params)
-    stats_row = cursor.fetchone()
+    stats_result = db.execute_query(stats_query, params)
+    stats_row = stats_result[0] if stats_result else {}
 
-    total_penyidikan = stats_row['penyidikan_count'] if stats_row and stats_row['penyidikan_count'] is not None else 0
-    total_penuntutan = stats_row['penuntutan_count'] if stats_row and stats_row['penuntutan_count'] is not None else 0
-    total_keterangan = stats_row['keterangan_count'] if stats_row and stats_row['keterangan_count'] is not None else 0
+    total_penyidikan = stats_row.get('penyidikan_count', 0)
+    total_penuntutan = stats_row.get('penuntutan_count', 0)
+    total_keterangan = stats_row.get('keterangan_count', 0)
 
     total_pages = max((total_records + per_page - 1) // per_page, 1)
     if page > total_pages:
@@ -608,11 +590,9 @@ def view_pidsus():
         SELECT id, no, periode, tanggal, jenis_perkara, penyidikan, penuntutan, keterangan, created_at
         FROM pidsus_data {where_clause}
         ORDER BY DATE(tanggal) DESC, created_at DESC, id DESC
-        LIMIT ? OFFSET ?
+        LIMIT %s OFFSET %s
     """
-    cursor.execute(data_query, params + [per_page, offset])
-    rows = cursor.fetchall()
-    conn.close()
+    rows = db.execute_query(data_query, params + [per_page, offset])
 
     data = []
     for row in rows:
@@ -789,12 +769,8 @@ def laporan_pidum():
         tahun = datetime.now().year
 
     # Query database using filters similar to laporan_pidum_new
-    import sqlite3
     from collections import defaultdict
-
-    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    from models.mysql_database import db
 
     where_conditions = []
     params = []
@@ -805,19 +781,19 @@ def laporan_pidum():
     if start_date or end_date:
         # Use date range filter only
         if start_date:
-            where_conditions.append("tanggal >= ?")
+            where_conditions.append("tanggal >= %s")
             params.append(start_date)
         if end_date:
-            where_conditions.append("tanggal <= ?")
+            where_conditions.append("tanggal <= %s")
             params.append(end_date)
     else:
         # Use month/year filter only when date range is not specified
         if bulan:
-            where_conditions.append("strftime('%m', tanggal) = ?")
+            where_conditions.append("MONTH(tanggal) = %s")
             params.append(f"{bulan:02d}")
 
         if tahun:
-            where_conditions.append("strftime('%Y', tanggal) = ?")
+            where_conditions.append("YEAR(tanggal) = %s")
             params.append(str(tahun))
 
     where_clause = ""
@@ -826,27 +802,25 @@ def laporan_pidum():
 
     query = f"""
     SELECT jenis_perkara, tahapan_penanganan,
-           CASE strftime('%m', tanggal)
-               WHEN '01' THEN 'Januari'
-               WHEN '02' THEN 'Februari'
-               WHEN '03' THEN 'Maret'
-               WHEN '04' THEN 'April'
-               WHEN '05' THEN 'Mei'
-               WHEN '06' THEN 'Juni'
-               WHEN '07' THEN 'Juli'
-               WHEN '08' THEN 'Agustus'
-               WHEN '09' THEN 'September'
-               WHEN '10' THEN 'Oktober'
-               WHEN '11' THEN 'November'
-               WHEN '12' THEN 'Desember'
+           CASE MONTH(tanggal)
+               WHEN 1 THEN 'Januari'
+               WHEN 2 THEN 'Februari'
+               WHEN 3 THEN 'Maret'
+               WHEN 4 THEN 'April'
+               WHEN 5 THEN 'Mei'
+               WHEN 6 THEN 'Juni'
+               WHEN 7 THEN 'Juli'
+               WHEN 8 THEN 'Agustus'
+               WHEN 9 THEN 'September'
+               WHEN 10 THEN 'Oktober'
+               WHEN 11 THEN 'November'
+               WHEN 12 THEN 'Desember'
            END as bulan_nama
     FROM pidum_data {where_clause}
     ORDER BY jenis_perkara
     """
 
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
-    conn.close()
+    rows = db.execute_query(query, params)
 
     # Aggregate per jenis_perkara
     agg = defaultdict(lambda: {
@@ -1032,13 +1006,8 @@ def laporan_pidum_new():
     end_date = request.args.get('end_date')
     
     from datetime import datetime
-    import sqlite3
     from collections import defaultdict
-    
-    # Get database connection
-    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    from models.mysql_database import db
     
     # Build query based on filters
     # LOGIC: Prioritize date range filter over month/year filter
@@ -1050,24 +1019,24 @@ def laporan_pidum_new():
     if start_date or end_date:
         # Use date range filter only
         if start_date:
-            where_conditions.append("tanggal >= ?")
+            where_conditions.append("tanggal >= %s")
             params.append(start_date)
         if end_date:
-            where_conditions.append("tanggal <= ?")
+            where_conditions.append("tanggal <= %s")
             params.append(end_date)
     else:
         # Use month/year filter only when date range is not specified
         if bulan:
-            where_conditions.append("strftime('%m', tanggal) = ?")
+            where_conditions.append("MONTH(tanggal) = %s")
             params.append(f"{bulan:02d}")
         
         if tahun:
-            where_conditions.append("strftime('%Y', tanggal) = ?")
+            where_conditions.append("YEAR(tanggal) = %s")
             params.append(str(tahun))
     
     # Periode filter is independent and always applied if provided
     if periode_filter:
-        where_conditions.append("periode = ?")
+        where_conditions.append("periode = %s")
         params.append(periode_filter)
     
     where_clause = ""
@@ -1081,14 +1050,12 @@ def laporan_pidum_new():
     ORDER BY tanggal DESC, periode, jenis_perkara
     """
     
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
+    rows = db.execute_query(query, params)
     
     # Get unique periods for filter dropdown
-    cursor.execute("SELECT DISTINCT periode FROM pidum_data ORDER BY periode")
-    periode_options = [row[0] for row in cursor.fetchall() if row[0]]
-    
-    conn.close()
+    periode_query = "SELECT DISTINCT periode FROM pidum_data ORDER BY periode"
+    periode_results = db.execute_query(periode_query)
+    periode_options = [row['periode'] for row in periode_results if row['periode']]
     
     # Define 7 predefined categories
     predefined_categories = [
@@ -1205,10 +1172,7 @@ def export_pidum_excel():
     end_date = request.args.get('end_date')
     
     # Apply filters to data retrieval
-    import sqlite3
-    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    from models.mysql_database import db
     
     where_conditions = []
     params = []
@@ -1216,17 +1180,17 @@ def export_pidum_excel():
     # Use same filter logic as laporan_pidum
     if start_date or end_date:
         if start_date:
-            where_conditions.append("tanggal >= ?")
+            where_conditions.append("tanggal >= %s")
             params.append(start_date)
         if end_date:
-            where_conditions.append("tanggal <= ?")
+            where_conditions.append("tanggal <= %s")
             params.append(end_date)
     else:
         if bulan:
-            where_conditions.append("strftime('%m', tanggal) = ?")
+            where_conditions.append("MONTH(tanggal) = %s")
             params.append(f"{bulan:02d}")
         if tahun:
-            where_conditions.append("strftime('%Y', tanggal) = ?")
+            where_conditions.append("YEAR(tanggal) = %s")
             params.append(str(tahun))
     
     where_clause = ""
@@ -1234,9 +1198,7 @@ def export_pidum_excel():
         where_clause = "WHERE " + " AND ".join(where_conditions)
     
     query = f"SELECT * FROM pidum_data {where_clause} ORDER BY tanggal, no"
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
-    conn.close()
+    rows = db.execute_query(query, params)
     
     if not rows:
         flash('Tidak ada data PIDUM untuk diekspor dengan filter yang dipilih', 'warning')
@@ -1314,38 +1276,33 @@ def export_pidum_new_excel():
     jenis_perkara_filter = request.args.get('jenis_perkara')
     tahapan_filter = request.args.get('tahapan')
     
-    import sqlite3
     from collections import defaultdict
-    
-    # Get database connection
-    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    from models.mysql_database import db
     
     # Build WHERE clause based on filters
     where_conditions = []
     params = []
     
     if start_date and end_date:
-        where_conditions.append("DATE(tanggal) BETWEEN ? AND ?")
+        where_conditions.append("DATE(tanggal) BETWEEN %s AND %s")
         params.extend([start_date, end_date])
     elif bulan and tahun:
-        where_conditions.append("strftime('%m', tanggal) = ? AND strftime('%Y', tanggal) = ?")
+        where_conditions.append("MONTH(tanggal) = %s AND YEAR(tanggal) = %s")
         params.extend([f"{bulan:02d}", str(tahun)])
     elif tahun:
-        where_conditions.append("strftime('%Y', tanggal) = ?")
+        where_conditions.append("YEAR(tanggal) = %s")
         params.append(str(tahun))
     
     if periode_filter:
-        where_conditions.append("periode = ?")
+        where_conditions.append("periode = %s")
         params.append(periode_filter)
     
     if jenis_perkara_filter:
-        where_conditions.append("jenis_perkara = ?")
+        where_conditions.append("jenis_perkara = %s")
         params.append(jenis_perkara_filter)
     
     if tahapan_filter:
-        where_conditions.append("tahapan_penanganan = ?")
+        where_conditions.append("tahapan_penanganan = %s")
         params.append(tahapan_filter)
     
     where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
@@ -1353,13 +1310,12 @@ def export_pidum_new_excel():
     # Get filtered data
     query = f"""
     SELECT no, periode, tanggal, jenis_perkara, tahapan_penanganan, keterangan, created_at
-    FROM pidum_data 
+    FROM pidum_data
     WHERE {where_clause}
     ORDER BY tanggal DESC, id DESC
     """
     
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
+    rows = db.execute_query(query, params)
     
     # Convert to list of dictionaries
     data = []
@@ -1373,8 +1329,6 @@ def export_pidum_new_excel():
             'Keterangan': row['keterangan'],
             'Tanggal Input': row['created_at']
         })
-    
-    conn.close()
     
     if not data:
         flash('Tidak ada data untuk filter yang dipilih', 'warning')
@@ -1474,37 +1428,32 @@ def export_pidum_new_word():
     jenis_perkara_filter = request.args.get('jenis_perkara')
     tahapan_filter = request.args.get('tahapan')
     
-    import sqlite3
-    
-    # Get database connection
-    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    from models.mysql_database import db
     
     # Build WHERE clause based on filters
     where_conditions = []
     params = []
     
     if start_date and end_date:
-        where_conditions.append("DATE(tanggal) BETWEEN ? AND ?")
+        where_conditions.append("DATE(tanggal) BETWEEN %s AND %s")
         params.extend([start_date, end_date])
     elif bulan and tahun:
-        where_conditions.append("strftime('%m', tanggal) = ? AND strftime('%Y', tanggal) = ?")
+        where_conditions.append("MONTH(tanggal) = %s AND YEAR(tanggal) = %s")
         params.extend([f"{bulan:02d}", str(tahun)])
     elif tahun:
-        where_conditions.append("strftime('%Y', tanggal) = ?")
+        where_conditions.append("YEAR(tanggal) = %s")
         params.append(str(tahun))
     
     if periode_filter:
-        where_conditions.append("periode = ?")
+        where_conditions.append("periode = %s")
         params.append(periode_filter)
     
     if jenis_perkara_filter:
-        where_conditions.append("jenis_perkara = ?")
+        where_conditions.append("jenis_perkara = %s")
         params.append(jenis_perkara_filter)
     
     if tahapan_filter:
-        where_conditions.append("tahapan_penanganan = ?")
+        where_conditions.append("tahapan_penanganan = %s")
         params.append(tahapan_filter)
     
     where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
@@ -1512,14 +1461,12 @@ def export_pidum_new_word():
     # Get filtered data
     query = f"""
     SELECT no, periode, tanggal, jenis_perkara, tahapan_penanganan, keterangan, created_at
-    FROM pidum_data 
+    FROM pidum_data
     WHERE {where_clause}
     ORDER BY tanggal DESC, id DESC
     """
     
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
-    conn.close()
+    rows = db.execute_query(query, params)
     
     if not rows:
         flash('Tidak ada data untuk filter yang dipilih', 'warning')
@@ -2374,30 +2321,26 @@ def laporan_pidsus():
         tahun = datetime.now().year
 
     # Query database using filters similar to laporan_pidum_new
-    import sqlite3
     from collections import defaultdict
-
-    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    from models.mysql_database import db
 
     where_conditions = []
     params = []
 
     if bulan:
-        where_conditions.append("strftime('%m', tanggal) = ?")
+        where_conditions.append("MONTH(tanggal) = %s")
         params.append(f"{bulan:02d}")
 
     if tahun:
-        where_conditions.append("strftime('%Y', tanggal) = ?")
+        where_conditions.append("YEAR(tanggal) = %s")
         params.append(str(tahun))
 
     if start_date:
-        where_conditions.append("tanggal >= ?")
+        where_conditions.append("tanggal >= %s")
         params.append(start_date)
 
     if end_date:
-        where_conditions.append("tanggal <= ?")
+        where_conditions.append("tanggal <= %s")
         params.append(end_date)
 
     where_clause = ""
@@ -2406,27 +2349,25 @@ def laporan_pidsus():
 
     query = f"""
     SELECT jenis_perkara, penyidikan, penuntutan,
-           CASE strftime('%m', tanggal)
-               WHEN '01' THEN 'Januari'
-               WHEN '02' THEN 'Februari'
-               WHEN '03' THEN 'Maret'
-               WHEN '04' THEN 'April'
-               WHEN '05' THEN 'Mei'
-               WHEN '06' THEN 'Juni'
-               WHEN '07' THEN 'Juli'
-               WHEN '08' THEN 'Agustus'
-               WHEN '09' THEN 'September'
-               WHEN '10' THEN 'Oktober'
-               WHEN '11' THEN 'November'
-               WHEN '12' THEN 'Desember'
+           CASE MONTH(tanggal)
+               WHEN 1 THEN 'Januari'
+               WHEN 2 THEN 'Februari'
+               WHEN 3 THEN 'Maret'
+               WHEN 4 THEN 'April'
+               WHEN 5 THEN 'Mei'
+               WHEN 6 THEN 'Juni'
+               WHEN 7 THEN 'Juli'
+               WHEN 8 THEN 'Agustus'
+               WHEN 9 THEN 'September'
+               WHEN 10 THEN 'Oktober'
+               WHEN 11 THEN 'November'
+               WHEN 12 THEN 'Desember'
            END as bulan_nama
     FROM pidsus_data {where_clause}
     ORDER BY jenis_perkara
     """
 
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
-    conn.close()
+    rows = db.execute_query(query, params)
 
     # Aggregate per jenis_perkara
     agg = defaultdict(lambda: {
@@ -2569,20 +2510,15 @@ def laporan_pidsus_bulanan():
     bulan = request.args.get('bulan', type=int)
     
     from datetime import datetime
-    import sqlite3
     from collections import defaultdict
-    
-    # Get database connection
-    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    from models.mysql_database import db
     
     # Build query with year and optional month filter
-    where_conditions = ["strftime('%Y', tanggal) = ?"]
+    where_conditions = ["YEAR(tanggal) = %s"]
     params = [str(tahun)]
     
     if bulan:
-        where_conditions.append("strftime('%m', tanggal) = ?")
+        where_conditions.append("MONTH(tanggal) = %s")
         params.append(f"{bulan:02d}")
     
     where_clause = "WHERE " + " AND ".join(where_conditions)
@@ -2590,54 +2526,50 @@ def laporan_pidsus_bulanan():
     # Get data from pidsus_data table
     query = f"""
     SELECT periode, jenis_perkara, tanggal, penyidikan, penuntutan,
-           strftime('%m', tanggal) as bulan_num,
-           CASE strftime('%m', tanggal)
-               WHEN '01' THEN 'Januari'
-               WHEN '02' THEN 'Februari'
-               WHEN '03' THEN 'Maret'
-               WHEN '04' THEN 'April'
-               WHEN '05' THEN 'Mei'
-               WHEN '06' THEN 'Juni'
-               WHEN '07' THEN 'Juli'
-               WHEN '08' THEN 'Agustus'
-               WHEN '09' THEN 'September'
-               WHEN '10' THEN 'Oktober'
-               WHEN '11' THEN 'November'
-               WHEN '12' THEN 'Desember'
+           MONTH(tanggal) as bulan_num,
+           CASE MONTH(tanggal)
+               WHEN 1 THEN 'Januari'
+               WHEN 2 THEN 'Februari'
+               WHEN 3 THEN 'Maret'
+               WHEN 4 THEN 'April'
+               WHEN 5 THEN 'Mei'
+               WHEN 6 THEN 'Juni'
+               WHEN 7 THEN 'Juli'
+               WHEN 8 THEN 'Agustus'
+               WHEN 9 THEN 'September'
+               WHEN 10 THEN 'Oktober'
+               WHEN 11 THEN 'November'
+               WHEN 12 THEN 'Desember'
            END as bulan_nama
     FROM pidsus_data {where_clause}
     ORDER BY bulan_num, jenis_perkara
     """
     
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
+    rows = db.execute_query(query, params)
     
     # Get available months for filter dropdown
     month_query = f"""
-    SELECT DISTINCT strftime('%m', tanggal) as bulan_num,
-           CASE strftime('%m', tanggal)
-               WHEN '01' THEN 'Januari'
-               WHEN '02' THEN 'Februari'
-               WHEN '03' THEN 'Maret'
-               WHEN '04' THEN 'April'
-               WHEN '05' THEN 'Mei'
-               WHEN '06' THEN 'Juni'
-               WHEN '07' THEN 'Juli'
-               WHEN '08' THEN 'Agustus'
-               WHEN '09' THEN 'September'
-               WHEN '10' THEN 'Oktober'
-               WHEN '11' THEN 'November'
-               WHEN '12' THEN 'Desember'
+    SELECT DISTINCT MONTH(tanggal) as bulan_num,
+           CASE MONTH(tanggal)
+               WHEN 1 THEN 'Januari'
+               WHEN 2 THEN 'Februari'
+               WHEN 3 THEN 'Maret'
+               WHEN 4 THEN 'April'
+               WHEN 5 THEN 'Mei'
+               WHEN 6 THEN 'Juni'
+               WHEN 7 THEN 'Juli'
+               WHEN 8 THEN 'Agustus'
+               WHEN 9 THEN 'September'
+               WHEN 10 THEN 'Oktober'
+               WHEN 11 THEN 'November'
+               WHEN 12 THEN 'Desember'
            END as bulan_nama
     FROM pidsus_data
-    WHERE strftime('%Y', tanggal) = ?
+    WHERE YEAR(tanggal) = %s
     ORDER BY bulan_num
     """
     
-    cursor.execute(month_query, [str(tahun)])
-    available_months = cursor.fetchall()
-    
-    conn.close()
+    available_months = db.execute_query(month_query, [str(tahun)])
     
     # Get report data using database function
     result = get_pidsus_report_data_bulanan(tahun, bulan)
@@ -2672,13 +2604,8 @@ def laporan_pidsus_new():
     end_date = request.args.get('end_date')
     
     from datetime import datetime
-    import sqlite3
     from collections import defaultdict
-    
-    # Get database connection
-    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    from models.mysql_database import db
     
     # Build query based on filters
     # LOGIC: Prioritize date range filter over month/year filter
@@ -2690,24 +2617,24 @@ def laporan_pidsus_new():
     if start_date or end_date:
         # Use date range filter only
         if start_date:
-            where_conditions.append("tanggal >= ?")
+            where_conditions.append("tanggal >= %s")
             params.append(start_date)
         if end_date:
-            where_conditions.append("tanggal <= ?")
+            where_conditions.append("tanggal <= %s")
             params.append(end_date)
     else:
         # Use month/year filter only when date range is not specified
         if bulan:
-            where_conditions.append("strftime('%m', tanggal) = ?")
+            where_conditions.append("MONTH(tanggal) = %s")
             params.append(f"{bulan:02d}")
         
         if tahun:
-            where_conditions.append("strftime('%Y', tanggal) = ?")
+            where_conditions.append("YEAR(tanggal) = %s")
             params.append(str(tahun))
     
     # Periode filter is independent and always applied if provided
     if periode_filter:
-        where_conditions.append("periode = ?")
+        where_conditions.append("periode = %s")
         params.append(periode_filter)
     
     where_clause = ""
@@ -2721,14 +2648,12 @@ def laporan_pidsus_new():
     ORDER BY tanggal DESC, periode, jenis_perkara
     """
     
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
+    rows = db.execute_query(query, params)
     
     # Get unique periods for filter dropdown
-    cursor.execute("SELECT DISTINCT periode FROM pidsus_data ORDER BY periode")
-    periode_options = [row[0] for row in cursor.fetchall() if row[0]]
-    
-    conn.close()
+    periode_query = "SELECT DISTINCT periode FROM pidsus_data ORDER BY periode"
+    periode_results = db.execute_query(periode_query)
+    periode_options = [row['periode'] for row in periode_results if row['periode']]
     
     # Define predefined categories for PIDSUS
     predefined_categories = [
@@ -2830,34 +2755,29 @@ def export_pidsus_new_excel():
     periode_filter = request.args.get('periode')
     jenis_perkara_filter = request.args.get('jenis_perkara')
     
-    import sqlite3
     from collections import defaultdict
-    
-    # Get database connection
-    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    from models.mysql_database import db
     
     # Build WHERE clause based on filters
     where_conditions = []
     params = []
     
     if start_date and end_date:
-        where_conditions.append("DATE(tanggal) BETWEEN ? AND ?")
+        where_conditions.append("DATE(tanggal) BETWEEN %s AND %s")
         params.extend([start_date, end_date])
     elif bulan and tahun:
-        where_conditions.append("strftime('%m', tanggal) = ? AND strftime('%Y', tanggal) = ?")
+        where_conditions.append("MONTH(tanggal) = %s AND YEAR(tanggal) = %s")
         params.extend([f"{bulan:02d}", str(tahun)])
     elif tahun:
-        where_conditions.append("strftime('%Y', tanggal) = ?")
+        where_conditions.append("YEAR(tanggal) = %s")
         params.append(str(tahun))
     
     if periode_filter:
-        where_conditions.append("periode = ?")
+        where_conditions.append("periode = %s")
         params.append(periode_filter)
     
     if jenis_perkara_filter:
-        where_conditions.append("jenis_perkara = ?")
+        where_conditions.append("jenis_perkara = %s")
         params.append(jenis_perkara_filter)
     
     where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
@@ -2870,8 +2790,7 @@ def export_pidsus_new_excel():
     ORDER BY tanggal DESC, id DESC
     """
     
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
+    rows = db.execute_query(query, params)
     
     # Convert to list of dictionaries
     data = []
@@ -2886,8 +2805,6 @@ def export_pidsus_new_excel():
             'Keterangan': row['keterangan'],
             'Tanggal Input': row['created_at']
         })
-    
-    conn.close()
     
     if not data:
         flash('Tidak ada data untuk filter yang dipilih', 'warning')
@@ -2986,33 +2903,28 @@ def export_pidsus_new_word():
     periode_filter = request.args.get('periode')
     jenis_perkara_filter = request.args.get('jenis_perkara')
     
-    import sqlite3
-    
-    # Get database connection
-    conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'kejaksaan.db'))
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    from models.mysql_database import db
     
     # Build WHERE clause based on filters
     where_conditions = []
     params = []
     
     if start_date and end_date:
-        where_conditions.append("DATE(tanggal) BETWEEN ? AND ?")
+        where_conditions.append("DATE(tanggal) BETWEEN %s AND %s")
         params.extend([start_date, end_date])
     elif bulan and tahun:
-        where_conditions.append("strftime('%m', tanggal) = ? AND strftime('%Y', tanggal) = ?")
+        where_conditions.append("MONTH(tanggal) = %s AND YEAR(tanggal) = %s")
         params.extend([f"{bulan:02d}", str(tahun)])
     elif tahun:
-        where_conditions.append("strftime('%Y', tanggal) = ?")
+        where_conditions.append("YEAR(tanggal) = %s")
         params.append(str(tahun))
     
     if periode_filter:
-        where_conditions.append("periode = ?")
+        where_conditions.append("periode = %s")
         params.append(periode_filter)
     
     if jenis_perkara_filter:
-        where_conditions.append("jenis_perkara = ?")
+        where_conditions.append("jenis_perkara = %s")
         params.append(jenis_perkara_filter)
     
     where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
@@ -3025,9 +2937,7 @@ def export_pidsus_new_word():
     ORDER BY tanggal DESC, id DESC
     """
     
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
-    conn.close()
+    rows = db.execute_query(query, params)
     
     if not rows:
         flash('Tidak ada data untuk filter yang dipilih', 'warning')
