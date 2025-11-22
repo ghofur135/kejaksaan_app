@@ -2,6 +2,34 @@
 
 Aplikasi manajemen data kejaksaan untuk PIDUM (Pidana Umum) dan PIDSUS (Pidana Khusus).
 
+## 🆕 Update Terbaru - Import Upaya Hukum Extended
+
+Fitur baru untuk import data Register Upaya Hukum dengan format extended yang mendukung semua jenis upaya hukum:
+
+### Fitur Baru
+- **Tabel Baru `upaya_hukum_data`** - Tabel khusus dengan 31 kolom untuk menyimpan data upaya hukum secara detail
+- **Import CSV Extended** - Mendukung format CSV dengan kolom Perlawanan, Banding, Kasasi, PK, dan Grasi
+- **Halaman View Upaya Hukum** - `/view_upaya_hukum` untuk melihat dan mengelola data upaya hukum
+- **Laporan Terintegrasi** - Data upaya hukum dari tabel baru otomatis terhitung di laporan PIDUM
+
+### Cara Menggunakan
+1. Buka `/import_upaya_hukum_api`
+2. Upload file CSV Register Upaya Hukum
+3. Preview dan konfirmasi import
+4. Lihat data di `/view_upaya_hukum`
+5. Laporan di `/view_pidum` akan menampilkan total gabungan
+
+### Format CSV yang Didukung
+Kolom wajib: `No`, `Terdakwa_Terpidana`, `No_Tanggal_RP9`
+
+Kolom opsional:
+- Banding: `Banding_No_Tgl_Akte_Permohonan`, `Banding_No_Tgl_Amar_Putusan_PT`, dll.
+- Kasasi: `Kasasi_No_Tgl_Akte_Permohonan`, `Kasasi_No_Tanggal_Amar_Putusan_MA`, dll.
+- PK: `PK_Tgl_Diajukan_Terpidana`, `PK_No_Tgl_Amar_Putusan`, dll.
+- Grasi: `Grasi_Tgl_Penerimaan_Berkas`, `Grasi_No_Tgl_KEPRES_Amar`, dll.
+
+---
+
 ## 🔄 Update MySQL Migration
 
 Aplikasi telah berhasil dimigrasi dari SQLite ke MySQL! Berikut adalah perubahan utama:
@@ -70,38 +98,31 @@ Jika diperlukan kembali ke SQLite:
 kejaksaan_app/
 ├── src/                          # Source code aplikasi
 │   ├── app_with_db.py           # File utama aplikasi Flask
+│   ├── config.py                # Konfigurasi database
 │   ├── controllers/             # Controller aplikasi
 │   ├── models/                  # Model database
-│   │   └── database.py          # Koneksi dan model database
+│   │   └── mysql_database.py    # Koneksi dan model MySQL
 │   ├── helpers/                 # Helper functions
 │   │   ├── import_helper.py
 │   │   ├── import_pra_penuntutan_helper.py
-│   │   └── import_upaya_hukum_helper.py
+│   │   └── import_upaya_hukum_helper.py  # Import upaya hukum extended
 │   └── utils/                   # Utility functions
 │       └── CSV Tool/            # Tools untuk CSV
 ├── config/                      # File konfigurasi
-│   ├── ecosystem-direct.config.json
-│   ├── ecosystem.config.json
-│   └── kejaksaan.code-workspace
 ├── scripts/                     # Script utility
-│   ├── generate_dummy_pidum.py
-│   ├── generate_realistic_pidum_dummy.py
-│   ├── insert_sample_data.py
-│   ├── migrate_database.py
-│   ├── pm2-manager.sh
-│   ├── reset_pidum.sh
-│   ├── reset_pidum_data.py
-│   ├── run_app.sh
-│   ├── run_production.sh
-│   └── simple_reset_pidum.py
 ├── data/                        # Data aplikasi
 │   └── csv/                     # File CSV untuk import
 ├── docs/                        # Dokumentasi
 ├── static/                      # File statis (CSS, JS, images)
 ├── templates/                   # Template HTML
+│   ├── view_pidum.html          # Lihat data PIDUM
+│   ├── view_upaya_hukum.html    # Lihat data Upaya Hukum (NEW)
+│   ├── import_upaya_hukum.html  # Form import upaya hukum
+│   └── import_upaya_hukum_preview.html  # Preview import
 ├── logs/                        # Log files
 ├── tests/                       # Unit tests
 ├── requirements.txt             # Dependencies Python
+├── CHANGELOG.md                 # Catatan perubahan
 └── .gitignore                   # Git ignore file
 ```
 

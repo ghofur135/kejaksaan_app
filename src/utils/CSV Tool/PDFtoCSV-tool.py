@@ -194,6 +194,39 @@ class PDFtoCSVConverter:
         
         return text.strip()
 
+    def clean_date_field(self, text):
+        """
+        MODIFIKASI BARU: Membersihkan field tanggal dari kata-kata seperti 
+        'Jaksa:', 'Terdakwa:', 'Memori', dll dan menghilangkan spasi berlebih di tengah tanggal
+        """
+        if not text:
+            return ""
+        
+        # Hapus kata-kata yang tidak diperlukan
+        keywords_to_remove = [
+            'Jaksa:', 'Terdakwa:', 'JPU:', 
+            '(Memori)', '(Kontra Memori)', 
+            'Memori', 'Kontra'
+        ]
+        
+        cleaned = text
+        for keyword in keywords_to_remove:
+            cleaned = cleaned.replace(keyword, '')
+        
+        # Hapus angka trailing seperti " 0" di akhir
+        cleaned = cleaned.strip()
+        if cleaned.endswith(' 0'):
+            cleaned = cleaned[:-2]
+        
+        # Perbaiki spasi di tengah tanggal (2025- 04-15 menjadi 2025-04-15)
+        # Pattern untuk mendeteksi format tanggal dengan spasi
+        cleaned = re.sub(r'(\d{4})-\s*(\d{1,2})-\s*(\d{1,2})', r'\1-\2-\3', cleaned)
+        
+        # Hapus whitespace berlebih
+        cleaned = ' '.join(cleaned.split())
+        
+        return cleaned.strip()
+
     def is_header_row(self, no, terdakwa, no_rp9):
         """
         Cek apakah row adalah header (bukan data)
@@ -325,7 +358,7 @@ class PDFtoCSVConverter:
     def extract_upaya_hukum_format(self, pdf_path):
         """
         Extract data from REGISTER UPAYA HUKUM (RP-11) format
-        MODIFIKASI BARU: Mengambil SEMUA 29 kolom dari tabel
+        MODIFIKASI: Mengambil SEMUA 29 kolom + Pembersihan field tanggal
         """
         all_data = []
         
@@ -334,7 +367,7 @@ class PDFtoCSVConverter:
             'No',                                    # 0
             'Terdakwa_Terpidana',                   # 1
             'No_Tanggal_RP9',                       # 2
-            # PERLAWANAN (3-7)
+            # PERLAWANAN (3-8)
             'Perlawanan_No_Tgl_Penetapan_PN',      # 3
             'Perlawanan_No_Tgl_Akte',              # 4
             'Perlawanan_Tgl_Pengajuan_Memori',     # 5
@@ -357,16 +390,40 @@ class PDFtoCSVConverter:
             'KasasiDemiHukum_Tanggal_Diajukan',    # 19
             'KasasiDemiHukum_Keadaan_Putusan_PN',  # 20
             'KasasiDemiHukum_No_Tgl_Amar_Putusan_MA', # 21
-            # PK (22-25)
+            # PK (22-24)
             'PK_Tgl_Diajukan_Terpidana',           # 22
             'PK_Tgl_Pemeriksaan_Berita_Acara',     # 23
             'PK_No_Tgl_Amar_Putusan',              # 24
-            # GRASI (25-28)
+            # GRASI (25-29)
             'Grasi_Tgl_Penerimaan_Berkas',         # 25
             'Grasi_Tgl_Penundaan_Eksekusi',        # 26
             'Grasi_Tgl_Risalah_Pertimbangan_Kajari', # 27
             'Grasi_Tgl_Terima_KEPRES',             # 28
             'Grasi_No_Tgl_KEPRES_Amar'             # 29
+        ]
+        
+        # Field yang perlu dibersihkan dengan clean_date_field (field tanggal)
+        date_fields = [
+            'Perlawanan_No_Tgl_Penetapan_PN',
+            'Perlawanan_No_Tgl_Akte',
+            'Perlawanan_Tgl_Pengajuan_Memori',
+            'Perlawanan_No_Tgl_Amar_Penetapan_PT',
+            'Banding_No_Tgl_Akte_Permohonan',
+            'Banding_Tgl_Pengajuan_Memori',
+            'Banding_No_Tgl_Amar_Putusan_PT',
+            'Kasasi_No_Tgl_Akte_Permohonan',
+            'Kasasi_Tgl_Pengajuan_Memori',
+            'Kasasi_No_Tanggal_Amar_Putusan_MA',
+            'KasasiDemiHukum_Tanggal_Diajukan',
+            'KasasiDemiHukum_No_Tgl_Amar_Putusan_MA',
+            'PK_Tgl_Diajukan_Terpidana',
+            'PK_Tgl_Pemeriksaan_Berita_Acara',
+            'PK_No_Tgl_Amar_Putusan',
+            'Grasi_Tgl_Penerimaan_Berkas',
+            'Grasi_Tgl_Penundaan_Eksekusi',
+            'Grasi_Tgl_Risalah_Pertimbangan_Kajari',
+            'Grasi_Tgl_Terima_KEPRES',
+            'Grasi_No_Tgl_KEPRES_Amar'
         ]
         
         with pdfplumber.open(pdf_path) as pdf:
@@ -387,7 +444,11 @@ class PDFtoCSVConverter:
                             for idx, col_name in enumerate(column_names):
                                 if idx < len(row):
                                     value = row[idx] if row[idx] else ""
-                                    row_data[col_name] = self.clean_text(value)
+                                    # MODIFIKASI: Gunakan clean_date_field untuk field tanggal
+                                    if col_name in date_fields:
+                                        row_data[col_name] = self.clean_date_field(value)
+                                    else:
+                                        row_data[col_name] = self.clean_text(value)
                                 else:
                                     row_data[col_name] = ""
                             
@@ -440,7 +501,7 @@ class PDFtoCSVConverter:
                 self.log_message("Ekstraksi Penuntutan: 5 kolom")
             elif format_type == "upaya_hukum":
                 df = self.extract_upaya_hukum_format(self.pdf_path)
-                self.log_message("Ekstraksi Upaya Hukum: SEMUA 29 kolom")
+                self.log_message("Ekstraksi Upaya Hukum: 29 kolom + pembersihan tanggal")
             else:
                 raise ValueError(f"Unknown format: {format_type}")
             

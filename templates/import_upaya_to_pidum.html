@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Import Upaya Hukum ke PIDUM - Aplikasi Data PIDUM & PIDSUS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-exchange-alt"></i> Import Data Upaya Hukum ke PIDUM</h4>
+                <small class="text-muted">
+                    Konversi data dari tabel <code>upaya_hukum_data</code> ke tabel <code>pidum_data</code>
+                </small>
+            </div>
+            <div class="card-body">
+                {% if preview_data %}
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle"></i> Informasi Mapping Data:</h6>
+                    <ul class="mb-0 small">
+                        <li><strong>Tanggal</strong> - Diambil dari tanggal terbaru di kolom upaya hukum (Banding, Kasasi, PK, Grasi)</li>
+                        <li><strong>Identitas Tersangka</strong> - Dari kolom <code>terdakwa_terpidana</code></li>
+                        <li><strong>Jenis Perkara</strong> - Dari kolom <code>jenis_perkara</code></li>
+                        <li><strong>Keterangan</strong> - Dari kolom <code>banding_no_tgl_akte_permohonan</code></li>
+                        <li><strong>Tahapan</strong> - Otomatis diset ke <code>UPAYA HUKUM</code></li>
+                    </ul>
+                </div>
+
+                <form method="POST" action="{{ url_for('import_upaya_to_pidum') }}">
+                    <div class="mb-3">
+                        <span class="badge bg-primary">Total Data: {{ total_rows }}</span>
+                        <button type="button" class="btn btn-sm btn-outline-primary ms-2" onclick="selectAll(true)">
+                            <i class="fas fa-check-square"></i> Pilih Semua
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectAll(false)">
+                            <i class="fas fa-square"></i> Batal Pilih
+                        </button>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover table-sm">
+                            <thead class="bg-black">
+                                <tr>
+                                    <th width="4%">
+                                        <input type="checkbox" id="select-all" class="form-check-input" checked
+                                               onchange="selectAll(this.checked)">
+                                    </th>
+                                    <th width="4%">No</th>
+                                    <th width="12%">Tanggal</th>
+                                    <th width="20%">Identitas Tersangka</th>
+                                    <th width="15%">Jenis Perkara</th>
+                                    <th width="25%">Keterangan</th>
+                                    <th width="20%">Tanggal Ditemukan</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in preview_data %}
+                                <tr id="row-{{ row.id }}">
+                                    <td class="text-center">
+                                        <input type="checkbox" name="include_{{ row.id }}"
+                                               class="form-check-input row-checkbox" checked>
+                                    </td>
+                                    <td>
+                                        <small>{{ row.no }}</small>
+                                    </td>
+                                    <td>
+                                        <input type="date" name="tanggal_{{ row.id }}"
+                                               value="{{ row.tanggal }}"
+                                               class="form-control form-control-sm">
+                                    </td>
+                                    <td>
+                                        <input type="text" name="identitas_{{ row.id }}"
+                                               value="{{ row.identitas_tersangka }}"
+                                               class="form-control form-control-sm"
+                                               title="{{ row.identitas_tersangka }}">
+                                    </td>
+                                    <td>
+                                        <select name="jenis_perkara_{{ row.id }}" class="form-select form-select-sm">
+                                            <option value="NARKOBA" {% if row.jenis_perkara == 'NARKOBA' %}selected{% endif %}>NARKOBA</option>
+                                            <option value="PERKARA ANAK" {% if row.jenis_perkara == 'PERKARA ANAK' %}selected{% endif %}>PERKARA ANAK</option>
+                                            <option value="KESUSILAAN" {% if row.jenis_perkara == 'KESUSILAAN' %}selected{% endif %}>KESUSILAAN</option>
+                                            <option value="JUDI" {% if row.jenis_perkara == 'JUDI' %}selected{% endif %}>JUDI</option>
+                                            <option value="KDRT" {% if row.jenis_perkara == 'KDRT' %}selected{% endif %}>KDRT</option>
+                                            <option value="OHARDA" {% if row.jenis_perkara == 'OHARDA' %}selected{% endif %}>OHARDA</option>
+                                            <option value="PERKARA LAINNYA" {% if row.jenis_perkara == 'PERKARA LAINNYA' %}selected{% endif %}>PERKARA LAINNYA</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <textarea name="keterangan_{{ row.id }}"
+                                                  class="form-control form-control-sm" rows="1"
+                                                  title="{{ row.keterangan }}">{{ row.keterangan }}</textarea>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {% if row.original_dates %}
+                                                {% for d in row.original_dates %}
+                                                    <span class="badge bg-light text-dark">{{ d }}</span>
+                                                {% endfor %}
+                                            {% else %}
+                                                <span class="text-warning">Tidak ada tanggal</span>
+                                            {% endif %}
+                                        </small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{{ url_for('view_pidum') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Kembali
+                        </a>
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-check"></i> Import ke PIDUM (<span id="selected-count">{{ total_rows }}</span> data)
+                        </button>
+                    </div>
+                </form>
+
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <h5>Tidak ada data di tabel Upaya Hukum</h5>
+                    <p class="text-muted">Silakan import data upaya hukum terlebih dahulu</p>
+                    <a href="{{ url_for('import_upaya_hukum_api') }}" class="btn btn-primary">
+                        <i class="fas fa-file-import"></i> Import Upaya Hukum
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.table-sm td, .table-sm th {
+    padding: 0.3rem;
+    font-size: 0.85rem;
+}
+.form-control-sm, .form-select-sm {
+    font-size: 0.8rem;
+}
+.table thead.bg-black {
+    background-color: #000 !important;
+    color: #fff;
+}
+.table thead.bg-black th {
+    background-color: #000 !important;
+    color: #fff;
+}
+</style>
+
+<script>
+function selectAll(checked) {
+    document.querySelectorAll('.row-checkbox').forEach(cb => {
+        cb.checked = checked;
+    });
+    document.getElementById('select-all').checked = checked;
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const count = document.querySelectorAll('.row-checkbox:checked').length;
+    document.getElementById('selected-count').textContent = count;
+}
+
+// Update count when individual checkboxes change
+document.querySelectorAll('.row-checkbox').forEach(cb => {
+    cb.addEventListener('change', function() {
+        updateSelectedCount();
+        // Uncheck select-all if any is unchecked
+        if (!this.checked) {
+            document.getElementById('select-all').checked = false;
+        }
+    });
+});
+</script>
+{% endblock %}

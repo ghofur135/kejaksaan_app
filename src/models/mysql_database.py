@@ -369,13 +369,15 @@ class MySQLDatabase:
             return rows
     
     def get_pidum_report_data(self, bulan=None, tahun=None):
-        """Get PIDUM report data aggregated by jenis perkara and tahapan"""
+        """Get PIDUM report data aggregated by jenis perkara and tahapan
+        Also includes data from upaya_hukum_data table for UPAYA HUKUM column
+        """
         with self.get_connection() as conn:
             cursor = conn.cursor(dictionary=True)
-            
-            # Base query - convert SQLite strftime to MySQL DATE_FORMAT
+
+            # Base query for pidum_data
             query = '''
-                SELECT 
+                SELECT
                     jenis_perkara,
                     tahapan_penanganan,
                     COUNT(*) as jumlah,
@@ -383,36 +385,36 @@ class MySQLDatabase:
                     DATE_FORMAT(tanggal, '%Y') as tahun
                 FROM pidum_data
             '''
-            
+
             params = []
             conditions = []
-            
+
             if bulan:
                 conditions.append("DATE_FORMAT(tanggal, '%m') = %s")
                 params.append(str(bulan).zfill(2))
-            
+
             if tahun:
                 conditions.append("DATE_FORMAT(tanggal, '%Y') = %s")
                 params.append(str(tahun))
-            
+
             if conditions:
                 query += " WHERE " + " AND ".join(conditions)
-            
+
             query += '''
                 GROUP BY jenis_perkara, tahapan_penanganan, DATE_FORMAT(tanggal, '%m'), DATE_FORMAT(tanggal, '%Y')
                 ORDER BY jenis_perkara, tahapan_penanganan
             '''
-            
+
             cursor.execute(query, params)
             rows = cursor.fetchall()
-            
+
             # Organize data by jenis_perkara
             report_data = {}
-            
+
             # Initialize all jenis perkara with zero values
             jenis_perkara_list = ['NARKOBA', 'PERKARA ANAK', 'KESUSILAAN', 'JUDI', 'KDRT', 'OHARDA', 'PERKARA LAINNYA']
             tahapan_list = ['PRA PENUNTUTAN', 'PENUNTUTAN', 'UPAYA HUKUM']
-            
+
             for jenis in jenis_perkara_list:
                 report_data[jenis] = {
                     'jenis_perkara': jenis,
@@ -421,13 +423,13 @@ class MySQLDatabase:
                     'UPAYA HUKUM': 0,
                     'JUMLAH': 0
                 }
-            
-            # Fill in actual data
+
+            # Fill in actual data from pidum_data
             for row in rows:
                 jenis = row['jenis_perkara']
                 tahapan = row['tahapan_penanganan']
                 jumlah = row['jumlah']
-                
+
                 if jenis not in report_data:
                     report_data[jenis] = {
                         'jenis_perkara': jenis,
@@ -436,17 +438,66 @@ class MySQLDatabase:
                         'UPAYA HUKUM': 0,
                         'JUMLAH': 0
                     }
-                
+
                 report_data[jenis][tahapan] = jumlah
                 report_data[jenis]['JUMLAH'] += jumlah
-            
+
+            # Also query upaya_hukum_data table for UPAYA HUKUM counts
+            try:
+                upaya_query = '''
+                    SELECT
+                        jenis_perkara,
+                        COUNT(*) as jumlah
+                    FROM upaya_hukum_data
+                '''
+
+                upaya_params = []
+                upaya_conditions = []
+
+                if bulan:
+                    upaya_conditions.append("DATE_FORMAT(created_at, '%m') = %s")
+                    upaya_params.append(str(bulan).zfill(2))
+
+                if tahun:
+                    upaya_conditions.append("DATE_FORMAT(created_at, '%Y') = %s")
+                    upaya_params.append(str(tahun))
+
+                if upaya_conditions:
+                    upaya_query += " WHERE " + " AND ".join(upaya_conditions)
+
+                upaya_query += " GROUP BY jenis_perkara"
+
+                cursor.execute(upaya_query, upaya_params)
+                upaya_rows = cursor.fetchall()
+
+                # Add upaya_hukum_data counts to UPAYA HUKUM column
+                for row in upaya_rows:
+                    jenis = row['jenis_perkara'] or 'PERKARA LAINNYA'
+                    jumlah = row['jumlah']
+
+                    if jenis not in report_data:
+                        report_data[jenis] = {
+                            'jenis_perkara': jenis,
+                            'PRA PENUNTUTAN': 0,
+                            'PENUNTUTAN': 0,
+                            'UPAYA HUKUM': 0,
+                            'JUMLAH': 0
+                        }
+
+                    report_data[jenis]['UPAYA HUKUM'] += jumlah
+                    report_data[jenis]['JUMLAH'] += jumlah
+
+            except Exception as e:
+                # If upaya_hukum_data table doesn't exist yet, just continue
+                print(f"Note: Could not query upaya_hukum_data: {e}")
+
             # Convert to list and add row numbers
             result = []
             for i, jenis in enumerate(jenis_perkara_list, 1):
                 data = report_data[jenis]
                 data['NO'] = i
                 result.append(data)
-            
+
             return result
     
     def authenticate_user(self, username, password):

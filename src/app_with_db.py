@@ -528,6 +528,35 @@ def view_pidum():
         if (row.get('keterangan') or '').strip():
             total_keterangan += 1
 
+    # Also count data from upaya_hukum_data table
+    total_upaya_hukum_extended = 0
+    try:
+        upaya_where_clauses = []
+        upaya_params = []
+
+        if start_date:
+            upaya_where_clauses.append("DATE(created_at) >= DATE(%s)")
+            upaya_params.append(start_date)
+
+        if end_date:
+            upaya_where_clauses.append("DATE(created_at) <= DATE(%s)")
+            upaya_params.append(end_date)
+
+        if search_tersangka:
+            upaya_where_clauses.append("terdakwa_terpidana LIKE %s")
+            upaya_params.append(f"%{search_tersangka}%")
+
+        upaya_where_clause = f"WHERE {' AND '.join(upaya_where_clauses)}" if upaya_where_clauses else ''
+
+        upaya_count_query = f"SELECT COUNT(*) as count FROM upaya_hukum_data {upaya_where_clause}"
+        upaya_count_result = db.execute_query(upaya_count_query, upaya_params)
+        total_upaya_hukum_extended = upaya_count_result[0]['count'] if upaya_count_result else 0
+    except Exception as e:
+        print(f"Note: Could not count upaya_hukum_data: {e}")
+
+    # Add extended upaya hukum count to total
+    total_upaya_hukum_combined = total_upaya_hukum + total_upaya_hukum_extended
+
     return render_template(
         'view_pidum.html',
         data=data,
@@ -537,7 +566,9 @@ def view_pidum():
         search_tersangka=search_tersangka,
         total_pra_penuntutan=total_pra_penuntutan,
         total_penuntutan=total_penuntutan,
-        total_upaya_hukum=total_upaya_hukum,
+        total_upaya_hukum=total_upaya_hukum_combined,
+        total_upaya_hukum_pidum=total_upaya_hukum,
+        total_upaya_hukum_extended=total_upaya_hukum_extended,
         total_keterangan=total_keterangan
     )
 
@@ -656,6 +687,149 @@ def delete_pidum_item_route(item_id):
     except Exception as e:
         flash(f'Error menghapus data: {str(e)}', 'error')
     return redirect(url_for('view_pidum'))
+
+@app.route('/import_upaya_to_pidum', methods=['GET', 'POST'])
+@login_required
+def import_upaya_to_pidum():
+    """Import data from upaya_hukum_data to pidum_data"""
+    import re
+    from models.mysql_database import db
+
+    if request.method == 'GET':
+        # Get preview data from upaya_hukum_data
+        try:
+            query = "SELECT * FROM upaya_hukum_data ORDER BY created_at DESC"
+            upaya_data = db.execute_query(query)
+
+            # Process data for preview
+            preview_data = []
+            for row in upaya_data:
+                # Extract most recent date from date columns (excluding no_tanggal_rp9)
+                date_columns = [
+                    'perlawanan_tgl_pengajuan_memori',
+                    'banding_tgl_pengajuan_memori',
+                    'kasasi_tgl_pengajuan_memori',
+                    'kasasi_demi_hukum_tgl_diajukan',
+                    'pk_tgl_diajukan_terpidana',
+                    'pk_tgl_pemeriksaan_berita_acara',
+                    'grasi_tgl_penerimaan_berkas',
+                    'grasi_tgl_penundaan_eksekusi',
+                    'grasi_tgl_risalah_pertimbangan_kajari',
+                    'grasi_tgl_terima_kepres',
+                ]
+
+                # Also check columns that contain dates in format like "Jaksa: 2025-04-15"
+                date_text_columns = [
+                    'banding_no_tgl_akte_permohonan',
+                    'kasasi_no_tgl_akte_permohonan',
+                    'banding_no_tgl_amar_putusan_pt',
+                    'kasasi_no_tgl_amar_putusan_ma',
+                    'pk_no_tgl_amar_putusan',
+                ]
+
+                extracted_dates = []
+
+                # Extract dates from date columns
+                for col in date_columns:
+                    val = row.get(col, '')
+                    if val:
+                        # Try to extract date pattern YYYY-MM-DD
+                        match = re.search(r'(\d{4})-\s*(\d{1,2})-\s*(\d{1,2})', str(val))
+                        if match:
+                            year, month, day = match.groups()
+                            date_str = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+                            extracted_dates.append(date_str)
+
+                # Extract dates from text columns
+                for col in date_text_columns:
+                    val = row.get(col, '')
+                    if val:
+                        match = re.search(r'(\d{4})-\s*(\d{1,2})-\s*(\d{1,2})', str(val))
+                        if match:
+                            year, month, day = match.groups()
+                            date_str = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+                            extracted_dates.append(date_str)
+
+                # Get most recent date
+                if extracted_dates:
+                    extracted_dates.sort(reverse=True)
+                    most_recent_date = extracted_dates[0]
+                else:
+                    most_recent_date = datetime.now().strftime('%Y-%m-%d')
+
+                preview_row = {
+                    'id': row.get('id'),
+                    'no': row.get('no', ''),
+                    'tanggal': most_recent_date,
+                    'identitas_tersangka': row.get('terdakwa_terpidana', ''),
+                    'jenis_perkara': row.get('jenis_perkara', 'PERKARA LAINNYA'),
+                    'keterangan': row.get('banding_no_tgl_akte_permohonan', ''),
+                    'original_dates': extracted_dates[:3],  # Show first 3 for reference
+                }
+                preview_data.append(preview_row)
+
+            return render_template('import_upaya_to_pidum.html',
+                                 preview_data=preview_data,
+                                 total_rows=len(preview_data))
+
+        except Exception as e:
+            flash(f'Error mengambil data: {str(e)}', 'error')
+            import traceback
+            traceback.print_exc()
+            return redirect(url_for('view_pidum'))
+
+    elif request.method == 'POST':
+        # Process import
+        try:
+            query = "SELECT * FROM upaya_hukum_data ORDER BY created_at DESC"
+            upaya_data = db.execute_query(query)
+
+            success_count = 0
+            error_count = 0
+
+            for i, row in enumerate(upaya_data):
+                # Check if this row is selected
+                include_key = f'include_{row.get("id")}'
+                if include_key not in request.form:
+                    continue
+
+                # Get form values (user can edit)
+                tanggal = request.form.get(f'tanggal_{row.get("id")}', datetime.now().strftime('%Y-%m-%d'))
+                identitas_tersangka = request.form.get(f'identitas_{row.get("id")}', row.get('terdakwa_terpidana', ''))
+                jenis_perkara = request.form.get(f'jenis_perkara_{row.get("id")}', row.get('jenis_perkara', 'PERKARA LAINNYA'))
+                keterangan = request.form.get(f'keterangan_{row.get("id")}', row.get('banding_no_tgl_akte_permohonan', ''))
+
+                # Prepare data for pidum_data
+                pidum_row = {
+                    'NO': row.get('no', str(i + 1)),
+                    'PERIODE': '1',
+                    'TANGGAL': tanggal,
+                    'JENIS PERKARA': jenis_perkara,
+                    'TAHAPAN_PENANGANAN': 'UPAYA HUKUM',
+                    'IDENTITAS_TERSANGKA': identitas_tersangka,
+                    'KETERANGAN': keterangan
+                }
+
+                try:
+                    insert_pidum_data(pidum_row)
+                    success_count += 1
+                except Exception as e:
+                    error_count += 1
+                    print(f"Error inserting row {row.get('id')}: {e}")
+
+            if success_count > 0:
+                flash(f'Berhasil import {success_count} data dari Upaya Hukum ke PIDUM', 'success')
+            if error_count > 0:
+                flash(f'{error_count} data gagal diimport', 'warning')
+            if success_count == 0 and error_count == 0:
+                flash('Tidak ada data yang dipilih untuk diimport', 'warning')
+
+        except Exception as e:
+            flash(f'Error saat import: {str(e)}', 'error')
+            import traceback
+            traceback.print_exc()
+
+        return redirect(url_for('view_pidum'))
 
 @app.route('/edit_pidsus/<int:item_id>', methods=['GET', 'POST'])
 @login_required
