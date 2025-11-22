@@ -8,31 +8,33 @@
         <div class="card">
             <div class="card-header">
                 <h4><i class="fas fa-eye"></i> Preview Import Data Upaya Hukum</h4>
-                <small class="text-muted">File: {{ filename }} | Total Data: {{ total_rows }} baris</small>
+                <small class="text-muted">File: {{ filename }} | Total Data: {{ total_rows }} baris | Format: {{ format_type|default('extended') }}</small>
             </div>
             <div class="card-body">
                 <div class="alert alert-success">
                     <h6><i class="fas fa-check-circle"></i> File berhasil diproses!</h6>
                     <p class="mb-0">
                         Silakan review data di bawah ini dan sesuaikan jenis perkara untuk setiap baris jika diperlukan.
-                        Data akan disimpan sebagai tahapan <strong>{{ tahapan_penanganan }}</strong>.
+                        Data akan disimpan ke tabel <strong>Upaya Hukum</strong>.
                     </p>
                 </div>
 
                 <form method="POST" action="{{ url_for('confirm_import_upaya_hukum') }}">
                     <div class="table-responsive">
-                        <table class="table table-bordered table-hover">
+                        <table class="table table-bordered table-hover table-sm">
                             <thead class="table-light">
                                 <tr>
-                                    <th width="5%">No</th>
-                                    <th width="10%">Periode</th>
-                                    <th width="15%">Tanggal</th>
-                                    <th width="20%">Jenis Perkara</th>
-                                    <th width="35%">Keterangan</th>
-                                    <th width="10%">Aksi</th>
-                                    <th width="5%">
-                                        <input type="checkbox" id="select-all" class="form-check-input">
-                                        <label for="select-all" class="form-check-label">All</label>
+                                    <th width="3%">No</th>
+                                    <th width="15%">Terdakwa/Terpidana</th>
+                                    <th width="10%">No/Tgl RP9</th>
+                                    <th width="12%">Jenis Perkara</th>
+                                    <th width="10%">Upaya Aktif</th>
+                                    <th width="12%">Banding</th>
+                                    <th width="12%">Kasasi</th>
+                                    <th width="12%">PK</th>
+                                    <th width="4%">
+                                        <input type="checkbox" id="select-all" class="form-check-input" checked>
+                                        <label for="select-all" class="form-check-label small">All</label>
                                     </th>
                                 </tr>
                             </thead>
@@ -40,17 +42,21 @@
                                 {% for row in import_data %}
                                 <tr id="row-{{ loop.index0 }}" class="{% if loop.index0 % 2 == 0 %}table-row-even{% else %}table-row-odd{% endif %}">
                                     <td>
-                                        <input type="text" name="no_{{ loop.index0 }}" value="{{ row.NO }}" class="form-control form-control-sm" readonly>
+                                        <small>{{ row.no }}</small>
+                                        <input type="hidden" name="no_{{ loop.index0 }}" value="{{ row.no }}">
                                     </td>
                                     <td>
-                                        <input type="text" name="periode_{{ loop.index0 }}" value="{{ row.PERIODE }}" class="form-control form-control-sm">
+                                        <small title="{{ row.terdakwa_terpidana }}">
+                                            {{ row.terdakwa_terpidana[:40] }}{% if row.terdakwa_terpidana|length > 40 %}...{% endif %}
+                                        </small>
                                     </td>
                                     <td>
-                                        <input type="date" name="tanggal_{{ loop.index0 }}" value="{{ row.TANGGAL }}" class="form-control form-control-sm">
+                                        <small title="{{ row.no_tanggal_rp9 }}">
+                                            {{ row.no_tanggal_rp9[:25] }}{% if row.no_tanggal_rp9|length > 25 %}...{% endif %}
+                                        </small>
                                     </td>
                                     <td>
                                         <select name="jenis_perkara_{{ loop.index0 }}" class="form-select form-select-sm">
-                                            <option value="">-- Pilih Jenis Perkara --</option>
                                             <option value="NARKOBA" {% if row.SUGGESTED_JENIS_PERKARA == 'NARKOBA' %}selected{% endif %}>NARKOBA</option>
                                             <option value="PERKARA ANAK" {% if row.SUGGESTED_JENIS_PERKARA == 'PERKARA ANAK' %}selected{% endif %}>PERKARA ANAK</option>
                                             <option value="KESUSILAAN" {% if row.SUGGESTED_JENIS_PERKARA == 'KESUSILAAN' %}selected{% endif %}>KESUSILAAN</option>
@@ -59,19 +65,53 @@
                                             <option value="OHARDA" {% if row.SUGGESTED_JENIS_PERKARA == 'OHARDA' %}selected{% endif %}>OHARDA</option>
                                             <option value="PERKARA LAINNYA" {% if row.SUGGESTED_JENIS_PERKARA == 'PERKARA LAINNYA' %}selected{% endif %}>PERKARA LAINNYA</option>
                                         </select>
-                                        <small class="text-muted">
-                                            Terdakwa: {{ row.TERDAKWA_ORIGINAL[:50] }}{% if row.TERDAKWA_ORIGINAL|length > 50 %}...{% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-primary fw-bold">{{ row.active_upaya_types }}</small>
+                                    </td>
+                                    <td>
+                                        {% if row.banding_no_tgl_akte_permohonan or row.banding_no_tgl_amar_putusan_pt %}
+                                        <small>
+                                            {% if row.banding_no_tgl_akte_permohonan %}
+                                            <span class="text-info" title="Akte Permohonan">Akte: {{ row.banding_no_tgl_akte_permohonan[:20] }}...</span><br>
+                                            {% endif %}
+                                            {% if row.banding_no_tgl_amar_putusan_pt %}
+                                            <span class="text-success" title="Putusan PT">PT: {{ row.banding_no_tgl_amar_putusan_pt[:25] }}...</span>
+                                            {% endif %}
                                         </small>
+                                        {% else %}
+                                        <small class="text-muted">-</small>
+                                        {% endif %}
                                     </td>
                                     <td>
-                                        <textarea name="keterangan_{{ loop.index0 }}" class="form-control form-control-sm" rows="2">{{ row.KETERANGAN }}</textarea>
+                                        {% if row.kasasi_no_tgl_akte_permohonan or row.kasasi_no_tgl_amar_putusan_ma %}
+                                        <small>
+                                            {% if row.kasasi_no_tgl_akte_permohonan %}
+                                            <span class="text-info" title="Akte Permohonan">Akte: {{ row.kasasi_no_tgl_akte_permohonan[:20] }}...</span><br>
+                                            {% endif %}
+                                            {% if row.kasasi_no_tgl_amar_putusan_ma %}
+                                            <span class="text-success" title="Putusan MA">MA: {{ row.kasasi_no_tgl_amar_putusan_ma[:25] }}...</span>
+                                            {% endif %}
+                                        </small>
+                                        {% else %}
+                                        <small class="text-muted">-</small>
+                                        {% endif %}
                                     </td>
                                     <td>
-                                        <button type="button" class="btn btn-danger btn-sm remove-row" data-row="{{ loop.index0 }}">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
+                                        {% if row.pk_tgl_diajukan_terpidana or row.pk_no_tgl_amar_putusan %}
+                                        <small>
+                                            {% if row.pk_tgl_diajukan_terpidana %}
+                                            <span class="text-info" title="Tgl Diajukan">Ajukan: {{ row.pk_tgl_diajukan_terpidana[:15] }}</span><br>
+                                            {% endif %}
+                                            {% if row.pk_no_tgl_amar_putusan %}
+                                            <span class="text-success" title="Putusan">Put: {{ row.pk_no_tgl_amar_putusan[:20] }}...</span>
+                                            {% endif %}
+                                        </small>
+                                        {% else %}
+                                        <small class="text-muted">-</small>
+                                        {% endif %}
                                     </td>
-                                    <td>
+                                    <td class="text-center">
                                         <input type="checkbox" name="include_{{ loop.index0 }}" class="form-check-input row-checkbox" checked>
                                     </td>
                                 </tr>
@@ -80,36 +120,39 @@
                         </table>
                     </div>
 
-                    <div class="row mt-4">
+                    <!-- Detail Modal for Row Expansion -->
+                    <div class="row mt-3">
                         <div class="col-md-12">
-                            <div class="alert alert-info">
-                                <h6><i class="fas fa-info-circle"></i> Informasi:</h6>
-                                <ul class="mb-0">
-                                    <li><strong>Data Original:</strong> 
-                                        {% if import_data %}
-                                        - Terdakwa: {{ import_data[0].TERDAKWA_ORIGINAL if import_data[0].TERDAKWA_ORIGINAL else 'N/A' }}
-                                        - RP9: {{ import_data[0].RP9_ORIGINAL if import_data[0].RP9_ORIGINAL else 'N/A' }}
-                                        {% if import_data[0].JENIS_UPAYA_HUKUM %}
-                                        - Jenis Upaya Hukum: {{ import_data[0].JENIS_UPAYA_HUKUM }}
-                                        {% endif %}
-                                        {% else %}
-                                        - Tidak ada data
-                                        {% endif %}
-                                    </li>
-                                    <li><strong>Jenis Perkara:</strong> Sistem memberikan saran berdasarkan analisis nama terdakwa</li>
-                                    <li><strong>Tahapan:</strong> Semua data akan disimpan sebagai {{ tahapan_penanganan }}</li>
-                                    <li><strong>Hapus Baris:</strong> Klik tombol merah untuk menghapus baris yang tidak diperlukan</li>
-                                </ul>
+                            <div class="card bg-light">
+                                <div class="card-header">
+                                    <h6><i class="fas fa-info-circle"></i> Ringkasan Data</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <strong>Total Data:</strong> {{ total_rows }} baris
+                                        </div>
+                                        <div class="col-md-3">
+                                            <strong>Format:</strong> {{ format_type|default('Extended') }}
+                                        </div>
+                                        <div class="col-md-6">
+                                            <strong>Kolom Tersedia:</strong>
+                                            <small class="text-muted">
+                                                Terdakwa, RP9, Banding, Kasasi, PK, Grasi, dll.
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="d-flex justify-content-between">
+                    <div class="d-flex justify-content-between mt-4">
                         <a href="{{ url_for('import_upaya_hukum_api') }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left"></i> Kembali ke Upload
                         </a>
-                        <button type="submit" class="btn btn-success">
-                            <i class="fas fa-check"></i> Konfirmasi Import
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-check"></i> Konfirmasi Import ({{ total_rows }} data)
                         </button>
                     </div>
                 </form>
@@ -117,6 +160,32 @@
         </div>
     </div>
 </div>
+
+<!-- Row Detail Modal -->
+<div class="modal fade" id="rowDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detail Upaya Hukum</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="rowDetailContent">
+                <!-- Content loaded dynamically -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.table-sm td, .table-sm th {
+    padding: 0.3rem;
+    font-size: 0.85rem;
+}
+.form-select-sm {
+    font-size: 0.8rem;
+    padding: 0.2rem 0.5rem;
+}
+</style>
 
 <script>
 // Select All functionality
@@ -127,27 +196,15 @@ document.getElementById('select-all').addEventListener('change', function() {
     });
 });
 
-// Remove row functionality
-document.querySelectorAll('.remove-row').forEach(button => {
-    button.addEventListener('click', function() {
-        const rowIndex = this.getAttribute('data-row');
-        const row = document.getElementById('row-' + rowIndex);
-        if (confirm('Apakah Anda yakin ingin menghapus baris ini?')) {
-            row.style.display = 'none';
-            // Uncheck the checkbox to exclude from submission
-            const checkbox = row.querySelector('.row-checkbox');
-            if (checkbox) {
-                checkbox.checked = false;
-            }
-        }
-    });
-});
-
 // Row checkbox management
 document.querySelectorAll('.row-checkbox').forEach(checkbox => {
     checkbox.addEventListener('change', function() {
+        const row = this.closest('tr');
         if (!this.checked) {
+            row.classList.add('table-secondary');
             document.getElementById('select-all').checked = false;
+        } else {
+            row.classList.remove('table-secondary');
         }
     });
 });

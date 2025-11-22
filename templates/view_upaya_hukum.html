@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Data Upaya Hukum - Aplikasi Data PIDUM & PIDSUS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4><i class="fas fa-gavel"></i> Data Upaya Hukum</h4>
+                <a href="{{ url_for('import_upaya_hukum_api') }}" class="btn btn-primary">
+                    <i class="fas fa-file-import"></i> Import Data
+                </a>
+            </div>
+            <div class="card-body">
+                <!-- Summary Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body text-center">
+                                <h3>{{ total_records }}</h3>
+                                <small>Total Data</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="card bg-info text-white">
+                            <div class="card-body text-center">
+                                <h4>{{ total_banding }}</h4>
+                                <small>Banding</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="card bg-warning text-dark">
+                            <div class="card-body text-center">
+                                <h4>{{ total_kasasi }}</h4>
+                                <small>Kasasi</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h4>{{ total_pk }}</h4>
+                                <small>PK</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-secondary text-white">
+                            <div class="card-body text-center">
+                                <h4>{{ total_grasi }}</h4>
+                                <small>Grasi</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search and Filter -->
+                <form method="GET" action="{{ url_for('view_upaya_hukum') }}" class="mb-4">
+                    <div class="row g-3">
+                        <div class="col-md-5">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" class="form-control" name="search_terdakwa"
+                                       placeholder="Cari nama terdakwa/terpidana..."
+                                       value="{{ search_terdakwa }}">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <select name="jenis_filter" class="form-select">
+                                <option value="">-- Semua Jenis Perkara --</option>
+                                <option value="NARKOBA" {% if jenis_filter == 'NARKOBA' %}selected{% endif %}>NARKOBA</option>
+                                <option value="PERKARA ANAK" {% if jenis_filter == 'PERKARA ANAK' %}selected{% endif %}>PERKARA ANAK</option>
+                                <option value="KESUSILAAN" {% if jenis_filter == 'KESUSILAAN' %}selected{% endif %}>KESUSILAAN</option>
+                                <option value="JUDI" {% if jenis_filter == 'JUDI' %}selected{% endif %}>JUDI</option>
+                                <option value="KDRT" {% if jenis_filter == 'KDRT' %}selected{% endif %}>KDRT</option>
+                                <option value="OHARDA" {% if jenis_filter == 'OHARDA' %}selected{% endif %}>OHARDA</option>
+                                <option value="PERKARA LAINNYA" {% if jenis_filter == 'PERKARA LAINNYA' %}selected{% endif %}>PERKARA LAINNYA</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="fas fa-filter"></i> Filter
+                            </button>
+                            <a href="{{ url_for('view_upaya_hukum') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Reset
+                            </a>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Data Table -->
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover table-sm">
+                        <thead class="table-dark">
+                            <tr>
+                                <th width="3%">No</th>
+                                <th width="15%">Terdakwa/Terpidana</th>
+                                <th width="10%">No/Tgl RP9</th>
+                                <th width="8%">Jenis Perkara</th>
+                                <th width="12%">Banding</th>
+                                <th width="12%">Kasasi</th>
+                                <th width="12%">PK</th>
+                                <th width="12%">Grasi</th>
+                                <th width="8%">Tanggal Import</th>
+                                <th width="8%">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if data %}
+                                {% for row in data %}
+                                <tr>
+                                    <td>{{ row.no }}</td>
+                                    <td>
+                                        <small title="{{ row.terdakwa_terpidana }}">
+                                            {{ row.terdakwa_terpidana[:35] }}{% if row.terdakwa_terpidana|length > 35 %}...{% endif %}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <small title="{{ row.no_tanggal_rp9 }}">
+                                            {{ row.no_tanggal_rp9[:20] }}{% if row.no_tanggal_rp9|length > 20 %}...{% endif %}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ row.jenis_perkara or '-' }}</span>
+                                    </td>
+                                    <td>
+                                        {% if row.banding_no_tgl_akte_permohonan or row.banding_no_tgl_amar_putusan_pt %}
+                                        <small>
+                                            {% if row.banding_no_tgl_akte_permohonan %}
+                                            <span class="text-info">Akte: {{ row.banding_no_tgl_akte_permohonan[:15] }}...</span><br>
+                                            {% endif %}
+                                            {% if row.banding_no_tgl_amar_putusan_pt %}
+                                            <span class="text-success">PT: {{ row.banding_no_tgl_amar_putusan_pt[:20] }}...</span>
+                                            {% endif %}
+                                        </small>
+                                        {% else %}
+                                        <small class="text-muted">-</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if row.kasasi_no_tgl_akte_permohonan or row.kasasi_no_tgl_amar_putusan_ma %}
+                                        <small>
+                                            {% if row.kasasi_no_tgl_akte_permohonan %}
+                                            <span class="text-info">Akte: {{ row.kasasi_no_tgl_akte_permohonan[:15] }}...</span><br>
+                                            {% endif %}
+                                            {% if row.kasasi_no_tgl_amar_putusan_ma %}
+                                            <span class="text-success">MA: {{ row.kasasi_no_tgl_amar_putusan_ma[:20] }}...</span>
+                                            {% endif %}
+                                        </small>
+                                        {% else %}
+                                        <small class="text-muted">-</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if row.pk_tgl_diajukan_terpidana or row.pk_no_tgl_amar_putusan %}
+                                        <small>
+                                            {% if row.pk_tgl_diajukan_terpidana %}
+                                            <span class="text-info">Ajukan: {{ row.pk_tgl_diajukan_terpidana[:12] }}</span><br>
+                                            {% endif %}
+                                            {% if row.pk_no_tgl_amar_putusan %}
+                                            <span class="text-success">Put: {{ row.pk_no_tgl_amar_putusan[:15] }}...</span>
+                                            {% endif %}
+                                        </small>
+                                        {% else %}
+                                        <small class="text-muted">-</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if row.grasi_tgl_penerimaan_berkas or row.grasi_no_tgl_kepres_amar %}
+                                        <small>
+                                            {% if row.grasi_tgl_penerimaan_berkas %}
+                                            <span class="text-info">Terima: {{ row.grasi_tgl_penerimaan_berkas[:12] }}</span><br>
+                                            {% endif %}
+                                            {% if row.grasi_no_tgl_kepres_amar %}
+                                            <span class="text-success">Kepres: {{ row.grasi_no_tgl_kepres_amar[:12] }}...</span>
+                                            {% endif %}
+                                        </small>
+                                        {% else %}
+                                        <small class="text-muted">-</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small>{{ row.created_at.strftime('%Y-%m-%d') if row.created_at else '-' }}</small>
+                                    </td>
+                                    <td>
+                                        <form action="{{ url_for('delete_upaya_hukum_item_route', item_id=row.id) }}" method="POST"
+                                              style="display: inline;"
+                                              onsubmit="return confirm('Yakin ingin menghapus data ini?');">
+                                            <button type="submit" class="btn btn-danger btn-sm">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="10" class="text-center text-muted py-4">
+                                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                                        <p>Belum ada data upaya hukum.</p>
+                                        <a href="{{ url_for('import_upaya_hukum_api') }}" class="btn btn-primary">
+                                            <i class="fas fa-file-import"></i> Import Data Sekarang
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.table-sm td, .table-sm th {
+    padding: 0.4rem;
+    font-size: 0.85rem;
+}
+</style>
+{% endblock %}

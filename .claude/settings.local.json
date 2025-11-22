@@ -15,7 +15,9 @@
       "Bash(copy:*)",
       "Bash(powershell -Command:*)",
       "Bash(\"D:\\my-project\\kejaksaan_app\\venv\\Scripts\\python.exe\" -c:*)",
-      "Bash(cmd //c \"taskkill //F //PID 7364\")"
+      "Bash(cmd //c \"taskkill //F //PID 7364\")",
+      "Bash(\"D:\\my-project\\kejaksaan_app\\venv\\Scripts\\python.exe\" -m py_compile:*)",
+      "Bash(\"D:\\my-project\\kejaksaan_app\\venv\\Scripts\\python.exe\" -m py_compile \"D:\\my-project\\kejaksaan_app\\src\\models\\mysql_database.py\")"
     ],
     "deny": [],
     "ask": []

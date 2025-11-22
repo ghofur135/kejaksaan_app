@@ -19,7 +19,8 @@ from models.mysql_database import (
     delete_all_pidum_data, delete_pidum_item,
     update_pidum_data, get_pidum_data_by_id,
     get_pidsus_data_by_id, update_pidsus_data, delete_pidsus_item, delete_all_pidsus_data,
-    authenticate_user
+    authenticate_user,
+    insert_upaya_hukum_data, get_all_upaya_hukum_data, delete_upaya_hukum_item
 )
 from helpers.import_helper import process_import_file, get_jenis_perkara_suggestions, prepare_import_data
 from helpers.import_pra_penuntutan_helper import (
@@ -1972,10 +1973,11 @@ def import_upaya_hukum_api():
                 session['import_filename_upaya_hukum'] = file.filename
                 session['import_format_type'] = 'upaya_hukum'
                 
-                return render_template('import_upaya_hukum_preview.html', 
+                return render_template('import_upaya_hukum_preview.html',
                                      import_data=result['data'],
                                      filename=file.filename,
                                      total_rows=result['total_rows'],
+                                     format_type=result.get('format_type', 'extended'),
                                      tahapan_penanganan='UPAYA HUKUM')
             else:
                 flash(f'Error memproses file: {result["error"]}', 'error')
@@ -1990,39 +1992,39 @@ def import_upaya_hukum_api():
 @app.route('/confirm_import_upaya_hukum', methods=['POST'])
 @login_required
 def confirm_import_upaya_hukum():
-    """Confirm and process upaya hukum import"""
+    """Confirm and process upaya hukum import to upaya_hukum_data table"""
     import_data = session.get('import_data_upaya_hukum', [])
-    
+
     if not import_data:
         flash('Tidak ada data import yang tersedia', 'error')
         return redirect(url_for('import_tahapan', tahapan='upaya_hukum'))
-    
+
     try:
         # Prepare data from form
         prepared_data = prepare_upaya_hukum_data_for_db(import_data, request.form)
-        
-        # Insert data to database
+
+        # Insert data to upaya_hukum_data table
         success_count = 0
         error_count = 0
         error_details = []
-        
+
         for data in prepared_data:
             try:
-                insert_pidum_data(data)
+                insert_upaya_hukum_data(data)
                 success_count += 1
             except Exception as e:
                 error_count += 1
-                error_details.append(f"Baris {data.get('NO', '?')}: {str(e)}")
-                print(f"Error inserting row {data.get('NO', '?')}: {e}")
-        
+                error_details.append(f"Baris {data.get('no', '?')}: {str(e)}")
+                print(f"Error inserting row {data.get('no', '?')}: {e}")
+
         # Clear session data
         session.pop('import_data_upaya_hukum', None)
         session.pop('import_filename_upaya_hukum', None)
         session.pop('import_format_type', None)
-        
+
         # Show results
         if success_count > 0:
-            flash(f'Berhasil import {success_count} data UPAYA HUKUM', 'success')
+            flash(f'Berhasil import {success_count} data UPAYA HUKUM ke tabel upaya_hukum_data', 'success')
             if error_count > 0:
                 flash(f'{error_count} data gagal diimport', 'warning')
                 # Show some error details
@@ -2033,11 +2035,77 @@ def confirm_import_upaya_hukum():
             if error_details:
                 for error in error_details[:3]:
                     flash(error, 'error')
-            
+
     except Exception as e:
         flash(f'Error saat import data: {str(e)}', 'error')
-    
-    return redirect(url_for('view_pidum'))
+        import traceback
+        traceback.print_exc()
+
+    return redirect(url_for('view_upaya_hukum'))
+
+@app.route('/view_upaya_hukum')
+@login_required
+def view_upaya_hukum():
+    """View all Upaya Hukum data from upaya_hukum_data table"""
+    search_terdakwa = request.args.get('search_terdakwa', '').strip()
+    jenis_filter = request.args.get('jenis_filter', '').strip()
+
+    from models.mysql_database import db
+
+    where_clauses = []
+    params = []
+
+    if search_terdakwa:
+        where_clauses.append("terdakwa_terpidana LIKE %s")
+        params.append(f"%{search_terdakwa}%")
+
+    if jenis_filter:
+        where_clauses.append("jenis_perkara = %s")
+        params.append(jenis_filter)
+
+    where_clause = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ''
+
+    data_query = f"""
+        SELECT *
+        FROM upaya_hukum_data {where_clause}
+        ORDER BY created_at DESC, id DESC
+    """
+    rows = db.execute_query(data_query, params)
+
+    data = rows if rows else []
+    total_records = len(data)
+
+    # Count by type
+    total_banding = sum(1 for row in data if row.get('banding_no_tgl_akte_permohonan') or row.get('banding_no_tgl_amar_putusan_pt'))
+    total_kasasi = sum(1 for row in data if row.get('kasasi_no_tgl_akte_permohonan') or row.get('kasasi_no_tgl_amar_putusan_ma'))
+    total_pk = sum(1 for row in data if row.get('pk_tgl_diajukan_terpidana') or row.get('pk_no_tgl_amar_putusan'))
+    total_grasi = sum(1 for row in data if row.get('grasi_tgl_penerimaan_berkas') or row.get('grasi_no_tgl_kepres_amar'))
+
+    return render_template(
+        'view_upaya_hukum.html',
+        data=data,
+        total_records=total_records,
+        search_terdakwa=search_terdakwa,
+        jenis_filter=jenis_filter,
+        total_banding=total_banding,
+        total_kasasi=total_kasasi,
+        total_pk=total_pk,
+        total_grasi=total_grasi
+    )
+
+@app.route('/delete_upaya_hukum_item/<int:item_id>', methods=['POST'])
+@login_required
+def delete_upaya_hukum_item_route(item_id):
+    """Delete single Upaya Hukum item by ID"""
+    try:
+        success = delete_upaya_hukum_item(item_id)
+        if success:
+            flash('Data berhasil dihapus', 'success')
+        else:
+            flash('Data tidak ditemukan', 'error')
+    except Exception as e:
+        flash(f'Error menghapus data: {str(e)}', 'error')
+    return redirect(url_for('view_upaya_hukum'))
 
 @app.route('/import_tahapan/<tahapan>', methods=['GET', 'POST'])
 @login_required

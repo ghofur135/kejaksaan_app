@@ -55,9 +55,136 @@ class MySQLDatabase:
                     """)
                     conn.commit()
                     print("Migration completed: 'identitas_tersangka' column added.")
+
+                # Create upaya_hukum_data table if not exists
+                self._create_upaya_hukum_table(cursor, conn)
+
         except Exception as e:
             print(f"Migration check/update skipped: {e}")
+
+    def _create_upaya_hukum_table(self, cursor, conn):
+        """Create upaya_hukum_data table if not exists"""
+        try:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS upaya_hukum_data (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    no TEXT,
+                    terdakwa_terpidana TEXT,
+                    no_tanggal_rp9 TEXT,
+                    jenis_perkara TEXT,
+                    -- Perlawanan
+                    perlawanan_no_tgl_penetapan_pn TEXT,
+                    perlawanan_no_tgl_akte TEXT,
+                    perlawanan_tgl_pengajuan_memori TEXT,
+                    perlawanan_yang_mengajukan_jpu TEXT,
+                    perlawanan_yang_mengajukan_terdakwa TEXT,
+                    perlawanan_no_tgl_amar_penetapan_pt TEXT,
+                    -- Banding
+                    banding_no_tgl_akte_permohonan TEXT,
+                    banding_tgl_pengajuan_memori TEXT,
+                    banding_yang_mengajukan_jpu TEXT,
+                    banding_yang_mengajukan_terdakwa TEXT,
+                    banding_no_tgl_amar_putusan_pt TEXT,
+                    -- Kasasi
+                    kasasi_no_tgl_akte_permohonan TEXT,
+                    kasasi_tgl_pengajuan_memori TEXT,
+                    kasasi_yang_mengajukan_jpu TEXT,
+                    kasasi_yang_mengajukan_terdakwa TEXT,
+                    kasasi_no_tgl_amar_putusan_ma TEXT,
+                    -- Kasasi Demi Hukum
+                    kasasi_demi_hukum_tgl_diajukan TEXT,
+                    kasasi_demi_hukum_keadaan_putusan_pn TEXT,
+                    kasasi_demi_hukum_no_tgl_amar_putusan_ma TEXT,
+                    -- PK
+                    pk_tgl_diajukan_terpidana TEXT,
+                    pk_tgl_pemeriksaan_berita_acara TEXT,
+                    pk_no_tgl_amar_putusan TEXT,
+                    -- Grasi
+                    grasi_tgl_penerimaan_berkas TEXT,
+                    grasi_tgl_penundaan_eksekusi TEXT,
+                    grasi_tgl_risalah_pertimbangan_kajari TEXT,
+                    grasi_tgl_terima_kepres TEXT,
+                    grasi_no_tgl_kepres_amar TEXT,
+                    -- Metadata
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.commit()
+            print("Migration: upaya_hukum_data table ensured.")
+        except Exception as e:
+            print(f"Create upaya_hukum_data table skipped: {e}")
     
+    def insert_upaya_hukum_data(self, data):
+        """Insert Upaya Hukum data into database"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            query = '''
+                INSERT INTO upaya_hukum_data (
+                    no, terdakwa_terpidana, no_tanggal_rp9, jenis_perkara,
+                    perlawanan_no_tgl_penetapan_pn, perlawanan_no_tgl_akte, perlawanan_tgl_pengajuan_memori,
+                    perlawanan_yang_mengajukan_jpu, perlawanan_yang_mengajukan_terdakwa, perlawanan_no_tgl_amar_penetapan_pt,
+                    banding_no_tgl_akte_permohonan, banding_tgl_pengajuan_memori, banding_yang_mengajukan_jpu,
+                    banding_yang_mengajukan_terdakwa, banding_no_tgl_amar_putusan_pt,
+                    kasasi_no_tgl_akte_permohonan, kasasi_tgl_pengajuan_memori, kasasi_yang_mengajukan_jpu,
+                    kasasi_yang_mengajukan_terdakwa, kasasi_no_tgl_amar_putusan_ma,
+                    kasasi_demi_hukum_tgl_diajukan, kasasi_demi_hukum_keadaan_putusan_pn, kasasi_demi_hukum_no_tgl_amar_putusan_ma,
+                    pk_tgl_diajukan_terpidana, pk_tgl_pemeriksaan_berita_acara, pk_no_tgl_amar_putusan,
+                    grasi_tgl_penerimaan_berkas, grasi_tgl_penundaan_eksekusi, grasi_tgl_risalah_pertimbangan_kajari,
+                    grasi_tgl_terima_kepres, grasi_no_tgl_kepres_amar
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            '''
+            cursor.execute(query, (
+                data.get('no', ''),
+                data.get('terdakwa_terpidana', ''),
+                data.get('no_tanggal_rp9', ''),
+                data.get('jenis_perkara', ''),
+                data.get('perlawanan_no_tgl_penetapan_pn', ''),
+                data.get('perlawanan_no_tgl_akte', ''),
+                data.get('perlawanan_tgl_pengajuan_memori', ''),
+                data.get('perlawanan_yang_mengajukan_jpu', ''),
+                data.get('perlawanan_yang_mengajukan_terdakwa', ''),
+                data.get('perlawanan_no_tgl_amar_penetapan_pt', ''),
+                data.get('banding_no_tgl_akte_permohonan', ''),
+                data.get('banding_tgl_pengajuan_memori', ''),
+                data.get('banding_yang_mengajukan_jpu', ''),
+                data.get('banding_yang_mengajukan_terdakwa', ''),
+                data.get('banding_no_tgl_amar_putusan_pt', ''),
+                data.get('kasasi_no_tgl_akte_permohonan', ''),
+                data.get('kasasi_tgl_pengajuan_memori', ''),
+                data.get('kasasi_yang_mengajukan_jpu', ''),
+                data.get('kasasi_yang_mengajukan_terdakwa', ''),
+                data.get('kasasi_no_tgl_amar_putusan_ma', ''),
+                data.get('kasasi_demi_hukum_tgl_diajukan', ''),
+                data.get('kasasi_demi_hukum_keadaan_putusan_pn', ''),
+                data.get('kasasi_demi_hukum_no_tgl_amar_putusan_ma', ''),
+                data.get('pk_tgl_diajukan_terpidana', ''),
+                data.get('pk_tgl_pemeriksaan_berita_acara', ''),
+                data.get('pk_no_tgl_amar_putusan', ''),
+                data.get('grasi_tgl_penerimaan_berkas', ''),
+                data.get('grasi_tgl_penundaan_eksekusi', ''),
+                data.get('grasi_tgl_risalah_pertimbangan_kajari', ''),
+                data.get('grasi_tgl_terima_kepres', ''),
+                data.get('grasi_no_tgl_kepres_amar', '')
+            ))
+            conn.commit()
+            return cursor.lastrowid
+
+    def get_all_upaya_hukum_data(self):
+        """Get all Upaya Hukum data from database"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute('SELECT * FROM upaya_hukum_data ORDER BY created_at DESC')
+            rows = cursor.fetchall()
+            return rows
+
+    def delete_upaya_hukum_item(self, item_id):
+        """Delete single Upaya Hukum item by ID"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute('DELETE FROM upaya_hukum_data WHERE id = %s', (item_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+
     def insert_pidum_data(self, data):
         """Insert PIDUM data into database"""
         with self.get_connection() as conn:
@@ -708,3 +835,15 @@ def get_pidsus_report_data_bulanan(tahun=None, bulan=None):
 def create_user(username, password):
     """Create a new user"""
     return db.create_user(username, password)
+
+def insert_upaya_hukum_data(data):
+    """Insert Upaya Hukum data into database"""
+    return db.insert_upaya_hukum_data(data)
+
+def get_all_upaya_hukum_data():
+    """Get all Upaya Hukum data from database"""
+    return db.get_all_upaya_hukum_data()
+
+def delete_upaya_hukum_item(item_id):
+    """Delete single Upaya Hukum item by ID"""
+    return db.delete_upaya_hukum_item(item_id)

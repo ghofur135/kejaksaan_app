@@ -6,40 +6,40 @@
 <div class="row">
     <div class="col-md-12">
         <div class="card">
-            <div class="card-header">
-                <h4><i class="fas fa-file-import"></i> Import Data Tahapan Upaya Hukum</h4>
-                <small class="text-muted">Format Khusus: RP9 Data</small>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h4><i class="fas fa-file-import"></i> Import Data Register Upaya Hukum</h4>
+                    <small class="text-muted">Format Extended: Perlawanan, Banding, Kasasi, PK, Grasi</small>
+                </div>
+                <a href="{{ url_for('view_upaya_hukum') }}" class="btn btn-secondary">
+                    <i class="fas fa-eye"></i> Lihat Data
+                </a>
             </div>
             <div class="card-body">
                 <div class="alert alert-info">
-                    <h6><i class="fas fa-info-circle"></i> Panduan Import Data Upaya Hukum (Format RP9):</h6>
+                    <h6><i class="fas fa-info-circle"></i> Panduan Import Data Register Upaya Hukum:</h6>
                     <ul class="mb-0">
                         <li>File yang didukung: Excel (.xlsx, .xls) dan CSV (.csv)</li>
-                        <li>Kolom yang diperlukan: <strong>No, Terdakwa_Terpidana, No_Tanggal_RP9</strong></li>
-                        <li>Kolom opsional: <strong>Jenis_Upaya_Hukum, Tanggal_Transaksi, Banding_Akte, Kasasi_Akte, PK_Tanggal</strong></li>
-                        <li><strong>No</strong> berisi nomor urut data</li>
-                        <li><strong>Terdakwa_Terpidana</strong> berisi nama terdakwa/terpidana</li>
-                        <li><strong>No_Tanggal_RP9</strong> berisi nomor dan tanggal RP9 (contoh: "PDM- 08/PRBAL/Eoh.2/06/2025")</li>
-                        <li><strong>Jenis_Upaya_Hukum</strong> berisi jenis upaya hukum (Banding, Kasasi, PK)</li>
-                        <li><strong>Tanggal_Transaksi</strong> berisi tanggal transaksi (contoh: "Terdakwa: 2025-09-08 0")</li>
-                        <li>Data akan disimpan sebagai tahapan <strong>Upaya Hukum</strong></li>
-                        <li>Sistem akan otomatis menganalisis jenis perkara berdasarkan informasi terdakwa</li>
+                        <li>Kolom <strong>wajib</strong>: No, Terdakwa_Terpidana, No_Tanggal_RP9</li>
+                        <li>Kolom opsional: Semua kolom upaya hukum (Perlawanan, Banding, Kasasi, PK, Grasi)</li>
+                        <li>Data akan disimpan ke tabel khusus <strong>upaya_hukum_data</strong></li>
+                        <li>Sistem akan otomatis mendeteksi jenis upaya hukum aktif</li>
                     </ul>
                 </div>
-                
+
                 <form method="POST" action="{{ url_for('import_upaya_hukum_api') }}" enctype="multipart/form-data">
                     <div class="mb-3">
-                        <label for="file" class="form-label">Pilih File Excel/CSV (Format RP9)</label>
-                        <input type="file" class="form-control" id="file" name="file" 
+                        <label for="file" class="form-label">Pilih File Excel/CSV (Format Register Upaya Hukum)</label>
+                        <input type="file" class="form-control" id="file" name="file"
                                accept=".xlsx,.xls,.csv" required>
                         <div class="form-text">
                             Format yang didukung: .xlsx, .xls, .csv (Maksimal 10MB)
                         </div>
                     </div>
-                    
+
                     <div class="d-flex justify-content-between">
-                        <a href="{{ url_for('input_pidum') }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left"></i> Kembali ke Input Manual
+                        <a href="{{ url_for('view_upaya_hukum') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Kembali
                         </a>
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-upload"></i> Upload dan Preview
@@ -56,70 +56,118 @@
     <div class="col-md-12">
         <div class="card">
             <div class="card-header">
-                <h5><i class="fas fa-download"></i> Template Format File</h5>
+                <h5><i class="fas fa-table"></i> Struktur Kolom CSV yang Didukung</h5>
             </div>
             <div class="card-body">
-                <p>Berikut contoh format file CSV yang diharapkan:</p>
-                <div class="table-responsive">
-                    <table class="table table-bordered table-sm">
-                        <thead class="table-light">
-                            <tr>
-                                <th>No</th>
-                                <th>Terdakwa_Terpidana</th>
-                                <th>No_Tanggal_RP9</th>
-                                <th>Jenis_Upaya_Hukum</th>
-                                <th>Tanggal_Transaksi</th>
-                                <th>Banding_Akte</th>
-                                <th>Kasasi_Akte</th>
-                                <th>PK_Tanggal</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>1</td>
-                                <td>FADELA TRI ANGGRAENI Alias DELA Binti PAIJO</td>
-                                <td>PDM- 08/PRBAL/Eoh.2/06/2025</td>
-                                <td>Banding</td>
-                                <td>Terdakwa: 2025-09-08 0</td>
-                                <td>Terdakwa: 2025-09-08 0</td>
-                                <td></td>
-                                <td></td>
-                            </tr>
-                            <tr>
-                                <td>2</td>
-                                <td>RENO ALI MUKHTAMAR Alias RENO Bin AHMAD SUBARNO</td>
-                                <td>PDM- 11/PRBAL/Eoh.2/07/2025</td>
-                                <td>Banding</td>
-                                <td>Terdakwa: 2025-09-22 0</td>
-                                <td>Terdakwa: 2025-09-22 0</td>
-                                <td></td>
-                                <td></td>
-                            </tr>
-                            <tr>
-                                <td>3</td>
-                                <td>ADITYA SETIAWAN bin WAHIDIN</td>
-                                <td>PDM- 19/PRBAL/Enz.2/06/2025</td>
-                                <td>Banding</td>
-                                <td>Jaksa: 2025-09-01 0</td>
-                                <td>Jaksa: 2025-09-01 0</td>
-                                <td></td>
-                                <td></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <p>File CSV harus memiliki kolom-kolom berikut:</p>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card bg-light mb-3">
+                            <div class="card-header bg-primary text-white">
+                                <strong>Kolom Wajib</strong>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-unstyled mb-0">
+                                    <li><code>No</code> - Nomor urut</li>
+                                    <li><code>Terdakwa_Terpidana</code> - Nama terdakwa</li>
+                                    <li><code>No_Tanggal_RP9</code> - Nomor dan tanggal RP9</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light mb-3">
+                            <div class="card-header bg-info text-white">
+                                <strong>Kolom Banding</strong>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-unstyled mb-0 small">
+                                    <li><code>Banding_No_Tgl_Akte_Permohonan</code></li>
+                                    <li><code>Banding_Tgl_Pengajuan_Memori</code></li>
+                                    <li><code>Banding_Yang_Mengajukan_JPU</code></li>
+                                    <li><code>Banding_Yang_Mengajukan_Terdakwa</code></li>
+                                    <li><code>Banding_No_Tgl_Amar_Putusan_PT</code></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light mb-3">
+                            <div class="card-header bg-warning text-dark">
+                                <strong>Kolom Kasasi</strong>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-unstyled mb-0 small">
+                                    <li><code>Kasasi_No_Tgl_Akte_Permohonan</code></li>
+                                    <li><code>Kasasi_Tgl_Pengajuan_Memori</code></li>
+                                    <li><code>Kasasi_Yang_Mengajukan_JPU</code></li>
+                                    <li><code>Kasasi_Yang_Mengajukan_Terdakwa</code></li>
+                                    <li><code>Kasasi_No_Tanggal_Amar_Putusan_MA</code></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card bg-light mb-3">
+                            <div class="card-header bg-success text-white">
+                                <strong>Kolom PK</strong>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-unstyled mb-0 small">
+                                    <li><code>PK_Tgl_Diajukan_Terpidana</code></li>
+                                    <li><code>PK_Tgl_Pemeriksaan_Berita_Acara</code></li>
+                                    <li><code>PK_No_Tgl_Amar_Putusan</code></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light mb-3">
+                            <div class="card-header bg-secondary text-white">
+                                <strong>Kolom Grasi</strong>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-unstyled mb-0 small">
+                                    <li><code>Grasi_Tgl_Penerimaan_Berkas</code></li>
+                                    <li><code>Grasi_Tgl_Penundaan_Eksekusi</code></li>
+                                    <li><code>Grasi_Tgl_Risalah_Pertimbangan_Kajari</code></li>
+                                    <li><code>Grasi_Tgl_Terima_KEPRES</code></li>
+                                    <li><code>Grasi_No_Tgl_KEPRES_Amar</code></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light mb-3">
+                            <div class="card-header bg-dark text-white">
+                                <strong>Kolom Perlawanan</strong>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-unstyled mb-0 small">
+                                    <li><code>Perlawanan_No_Tgl_Penetapan_PN</code></li>
+                                    <li><code>Perlawanan_No_Tgl_Akte</code></li>
+                                    <li><code>Perlawanan_Tgl_Pengajuan_Memori</code></li>
+                                    <li><code>Perlawanan_Yang_Mengajukan_JPU</code></li>
+                                    <li><code>Perlawanan_Yang_Mengajukan_Terdakwa</code></li>
+                                    <li><code>Perlawanan_No_Tgl_Amar_Penetapan_PT</code></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="alert alert-warning mt-3">
                     <h6><i class="fas fa-exclamation-triangle"></i> Catatan Penting:</h6>
                     <ul class="mb-0">
-                        <li>Kolom <strong>wajib</strong>: No, Terdakwa_Terpidana, No_Tanggal_RP9</li>
-                        <li>Kolom <strong>opsional</strong>: Jenis_Upaya_Hukum, Tanggal_Transaksi, Banding_Akte, Kasasi_Akte, PK_Tanggal</li>
-                        <li>Pastikan nama kolom <strong>tepat sama</strong> dengan template di atas</li>
-                        <li>Jangan ada baris kosong di tengah data</li>
-                        <li>Nama terdakwa harus diisi dengan lengkap</li>
-                        <li>Nomor RP9 harus mengikuti format standar dengan tanggal di akhir</li>
+                        <li>Nama kolom harus <strong>tepat sama</strong> dengan yang tertera di atas</li>
+                        <li>Kolom yang tidak tersedia akan diabaikan</li>
+                        <li>Baris kosong atau baris header duplikat akan di-skip otomatis</li>
                         <li>File CSV harus menggunakan encoding UTF-8</li>
-                        <li>Sistem akan menggunakan Tanggal_Transaksi jika tersedia, atau mengekstrak dari No_Tanggal_RP9</li>
+                        <li>Jenis perkara akan dideteksi otomatis berdasarkan nama terdakwa</li>
                     </ul>
                 </div>
             </div>
