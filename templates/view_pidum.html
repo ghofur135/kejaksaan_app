@@ -24,16 +24,21 @@
             </div>
             <div class="card-body">
                 <form method="GET" class="row g-2 align-items-end mb-4">
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label">Mulai Tanggal</label>
                         <input type="date" name="start_date" class="form-control form-control-sm" value="{{ start_date or '' }}">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label">Sampai Tanggal</label>
                         <input type="date" name="end_date" class="form-control form-control-sm" value="{{ end_date or '' }}">
                     </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Cari Nama Tersangka</label>
+                        <input type="text" name="search_tersangka" class="form-control form-control-sm"
+                               value="{{ search_tersangka or '' }}" placeholder="Ketik nama tersangka...">
+                    </div>
                     <div class="col-md-2">
-                        <button type="submit" class="btn btn-primary btn-sm w-100"><i class="fas fa-filter"></i> Terapkan</button>
+                        <button type="submit" class="btn btn-primary btn-sm w-100"><i class="fas fa-search"></i> Cari</button>
                     </div>
                     <div class="col-md-2">
                         <a href="{{ url_for('view_pidum') }}" class="btn btn-outline-secondary btn-sm w-100"><i class="fas fa-redo"></i> Reset</a>
@@ -43,8 +48,11 @@
                 {% if data %}
                     <div class="mb-3">
                         <span class="badge bg-primary">Total Data: {{ total_records }}</span>
-                        {% if start_date or end_date %}
+                        {% if start_date or end_date or search_tersangka %}
                         <span class="badge bg-info text-dark">Filter aktif</span>
+                        {% endif %}
+                        {% if search_tersangka %}
+                        <span class="badge bg-warning text-dark">Pencarian: "{{ search_tersangka }}"</span>
                         {% endif %}
                     </div>
                     
@@ -57,6 +65,7 @@
                                     <th>TANGGAL</th>
                                     <th>JENIS PERKARA</th>
                                     <th>TAHAPAN</th>
+                                    <th>IDENTITAS TERSANGKA</th>
                                     <th>KETERANGAN</th>
                                     <th width="100">AKSI</th>
                                 </tr>
@@ -74,7 +83,10 @@
                                         <span class="badge bg-info">{{ item.tahapan_penanganan or 'N/A' }}</span>
                                     </td>
                                     <td>
-                                        <small>{{ item.keterangan[:50] if item.keterangan else '-' }}{% if item.keterangan and item.keterangan|length > 50 %}...{% endif %}</small>
+                                        <small>{{ item.identitas_tersangka[:40] if item.identitas_tersangka else '-' }}{% if item.identitas_tersangka and item.identitas_tersangka|length > 40 %}...{% endif %}</small>
+                                    </td>
+                                    <td>
+                                        <small>{{ item.keterangan[:40] if item.keterangan else '-' }}{% if item.keterangan and item.keterangan|length > 40 %}...{% endif %}</small>
                                     </td>
                                     <td>
                                         <a href="{{ url_for('edit_pidum', item_id=item.id) }}" class="btn btn-warning btn-sm me-1">

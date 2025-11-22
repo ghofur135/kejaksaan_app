@@ -479,6 +479,7 @@ def input_pidsus():
 def view_pidum():
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
+    search_tersangka = request.args.get('search_tersangka', '').strip()
 
     from models.mysql_database import db
 
@@ -493,10 +494,14 @@ def view_pidum():
         where_clauses.append("DATE(tanggal) <= DATE(%s)")
         params.append(end_date)
 
+    if search_tersangka:
+        where_clauses.append("identitas_tersangka LIKE %s")
+        params.append(f"%{search_tersangka}%")
+
     where_clause = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ''
 
     data_query = f"""
-        SELECT id, no, periode, tanggal, jenis_perkara, tahapan_penanganan, keterangan, created_at
+        SELECT id, no, periode, tanggal, jenis_perkara, tahapan_penanganan, identitas_tersangka, keterangan, created_at
         FROM pidum_data {where_clause}
         ORDER BY DATE(tanggal) DESC, created_at DESC, id DESC
     """
@@ -528,6 +533,7 @@ def view_pidum():
         total_records=total_records,
         start_date=start_date,
         end_date=end_date,
+        search_tersangka=search_tersangka,
         total_pra_penuntutan=total_pra_penuntutan,
         total_penuntutan=total_penuntutan,
         total_upaya_hukum=total_upaya_hukum,
