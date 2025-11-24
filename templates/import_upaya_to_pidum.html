@@ -20,20 +20,30 @@
                         <li><strong>Tanggal</strong> - Diambil dari tanggal terbaru di kolom upaya hukum (Banding, Kasasi, PK, Grasi)</li>
                         <li><strong>Identitas Tersangka</strong> - Dari kolom <code>terdakwa_terpidana</code></li>
                         <li><strong>Jenis Perkara</strong> - Dari kolom <code>jenis_perkara</code></li>
-                        <li><strong>Keterangan</strong> - Dari kolom <code>banding_no_tgl_akte_permohonan</code></li>
+                        <li><strong>Keterangan</strong> - Dari kolom <code>no_tanggal_rp9</code></li>
                         <li><strong>Tahapan</strong> - Otomatis diset ke <code>UPAYA HUKUM</code></li>
                     </ul>
                 </div>
 
                 <form method="POST" action="{{ url_for('import_upaya_to_pidum') }}">
-                    <div class="mb-3">
-                        <span class="badge bg-primary">Total Data: {{ total_rows }}</span>
-                        <button type="button" class="btn btn-sm btn-outline-primary ms-2" onclick="selectAll(true)">
-                            <i class="fas fa-check-square"></i> Pilih Semua
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectAll(false)">
-                            <i class="fas fa-square"></i> Batal Pilih
-                        </button>
+                    <div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div>
+                            <span class="badge bg-primary">Total Data: {{ total_rows }}</span>
+                            <button type="button" class="btn btn-sm btn-outline-primary ms-2" onclick="selectAll(true)">
+                                <i class="fas fa-check-square"></i> Pilih Semua
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectAll(false)">
+                                <i class="fas fa-square"></i> Batal Pilih
+                            </button>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-danger" onclick="deleteSelected()">
+                                <i class="fas fa-trash"></i> Hapus Terpilih (<span id="delete-count">0</span>)
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="deleteAll()">
+                                <i class="fas fa-trash-alt"></i> Hapus Semua
+                            </button>
+                        </div>
                     </div>
 
                     <div class="table-responsive">
@@ -49,7 +59,8 @@
                                     <th width="20%">Identitas Tersangka</th>
                                     <th width="15%">Jenis Perkara</th>
                                     <th width="25%">Keterangan</th>
-                                    <th width="20%">Tanggal Ditemukan</th>
+                                    <th width="15%">Tanggal Ditemukan</th>
+                                    <th width="5%">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -99,6 +110,12 @@
                                                 <span class="text-warning">Tidak ada tanggal</span>
                                             {% endif %}
                                         </small>
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                onclick="deleteRow({{ row.id }})" title="Hapus data ini">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -161,6 +178,7 @@ function selectAll(checked) {
 function updateSelectedCount() {
     const count = document.querySelectorAll('.row-checkbox:checked').length;
     document.getElementById('selected-count').textContent = count;
+    document.getElementById('delete-count').textContent = count;
 }
 
 // Update count when individual checkboxes change
@@ -173,5 +191,134 @@ document.querySelectorAll('.row-checkbox').forEach(cb => {
         }
     });
 });
+
+// Initialize delete count on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateSelectedCount();
+});
+
+// Delete single row
+function deleteRow(id) {
+    if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) return;
+
+    fetch(`/delete_upaya_hukum/${id}`, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById(`row-${id}`).remove();
+            updateTotalCount();
+            showAlert('success', data.message);
+        } else {
+            showAlert('danger', data.message);
+        }
+    })
+    .catch(error => {
+        showAlert('danger', 'Terjadi kesalahan saat menghapus data');
+        console.error(error);
+    });
+}
+
+// Delete selected rows
+function deleteSelected() {
+    const checkboxes = document.querySelectorAll('.row-checkbox:checked');
+    if (checkboxes.length === 0) {
+        showAlert('warning', 'Pilih data yang ingin dihapus');
+        return;
+    }
+
+    if (!confirm(`Apakah Anda yakin ingin menghapus ${checkboxes.length} data terpilih?`)) return;
+
+    const ids = Array.from(checkboxes).map(cb => {
+        const row = cb.closest('tr');
+        return parseInt(row.id.replace('row-', ''));
+    });
+
+    fetch('/delete_selected_upaya_hukum', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ ids: ids })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            ids.forEach(id => {
+                const row = document.getElementById(`row-${id}`);
+                if (row) row.remove();
+            });
+            updateTotalCount();
+            showAlert('success', data.message);
+        } else {
+            showAlert('danger', data.message);
+        }
+    })
+    .catch(error => {
+        showAlert('danger', 'Terjadi kesalahan saat menghapus data');
+        console.error(error);
+    });
+}
+
+// Delete all rows
+function deleteAll() {
+    const totalRows = document.querySelectorAll('.row-checkbox').length;
+    if (totalRows === 0) {
+        showAlert('warning', 'Tidak ada data untuk dihapus');
+        return;
+    }
+
+    if (!confirm(`Apakah Anda yakin ingin menghapus SEMUA ${totalRows} data? Tindakan ini tidak dapat dibatalkan.`)) return;
+
+    fetch('/delete_all_upaya_hukum', {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.querySelector('tbody').innerHTML = '';
+            updateTotalCount();
+            showAlert('success', data.message);
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showAlert('danger', data.message);
+        }
+    })
+    .catch(error => {
+        showAlert('danger', 'Terjadi kesalahan saat menghapus data');
+        console.error(error);
+    });
+}
+
+// Update total count badge
+function updateTotalCount() {
+    const totalRows = document.querySelectorAll('.row-checkbox').length;
+    const badge = document.querySelector('.badge.bg-primary');
+    if (badge) {
+        badge.textContent = `Total Data: ${totalRows}`;
+    }
+    updateSelectedCount();
+}
+
+// Show alert message
+function showAlert(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.querySelector('.card-body').insertBefore(alertDiv, document.querySelector('.card-body').firstChild);
+
+    setTimeout(() => alertDiv.remove(), 5000);
+}
 </script>
 {% endblock %}

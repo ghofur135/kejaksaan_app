@@ -763,7 +763,7 @@ def import_upaya_to_pidum():
                     'tanggal': most_recent_date,
                     'identitas_tersangka': row.get('terdakwa_terpidana', ''),
                     'jenis_perkara': row.get('jenis_perkara', 'PERKARA LAINNYA'),
-                    'keterangan': row.get('banding_no_tgl_akte_permohonan', ''),
+                    'keterangan': row.get('no_tanggal_rp9', ''),
                     'original_dates': extracted_dates[:3],  # Show first 3 for reference
                 }
                 preview_data.append(preview_row)
@@ -797,7 +797,7 @@ def import_upaya_to_pidum():
                 tanggal = request.form.get(f'tanggal_{row.get("id")}', datetime.now().strftime('%Y-%m-%d'))
                 identitas_tersangka = request.form.get(f'identitas_{row.get("id")}', row.get('terdakwa_terpidana', ''))
                 jenis_perkara = request.form.get(f'jenis_perkara_{row.get("id")}', row.get('jenis_perkara', 'PERKARA LAINNYA'))
-                keterangan = request.form.get(f'keterangan_{row.get("id")}', row.get('banding_no_tgl_akte_permohonan', ''))
+                keterangan = request.form.get(f'keterangan_{row.get("id")}', row.get('no_tanggal_rp9', ''))
 
                 # Prepare data for pidum_data
                 pidum_row = {
@@ -830,6 +830,70 @@ def import_upaya_to_pidum():
             traceback.print_exc()
 
         return redirect(url_for('view_pidum'))
+
+@app.route('/delete_upaya_hukum/<int:item_id>', methods=['POST'])
+@login_required
+def delete_upaya_hukum(item_id):
+    """Delete data from upaya_hukum_data table"""
+    from models.mysql_database import db
+
+    try:
+        query = "DELETE FROM upaya_hukum_data WHERE id = %s"
+        db.execute_query(query, (item_id,))
+
+        # Check if request is AJAX
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': True, 'message': 'Data berhasil dihapus'})
+
+        flash('Data berhasil dihapus', 'success')
+    except Exception as e:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': str(e)}), 500
+        flash(f'Error menghapus data: {str(e)}', 'error')
+
+    return redirect(url_for('import_upaya_to_pidum'))
+
+@app.route('/delete_all_upaya_hukum', methods=['POST'])
+@login_required
+def delete_all_upaya_hukum():
+    """Delete all data from upaya_hukum_data table"""
+    from models.mysql_database import db
+
+    try:
+        query = "DELETE FROM upaya_hukum_data"
+        db.execute_query(query)
+
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': True, 'message': 'Semua data berhasil dihapus'})
+
+        flash('Semua data berhasil dihapus', 'success')
+    except Exception as e:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': str(e)}), 500
+        flash(f'Error menghapus data: {str(e)}', 'error')
+
+    return redirect(url_for('import_upaya_to_pidum'))
+
+@app.route('/delete_selected_upaya_hukum', methods=['POST'])
+@login_required
+def delete_selected_upaya_hukum():
+    """Delete selected data from upaya_hukum_data table"""
+    from models.mysql_database import db
+
+    try:
+        data = request.get_json()
+        ids = data.get('ids', [])
+
+        if not ids:
+            return jsonify({'success': False, 'message': 'Tidak ada data yang dipilih'}), 400
+
+        placeholders = ','.join(['%s'] * len(ids))
+        query = f"DELETE FROM upaya_hukum_data WHERE id IN ({placeholders})"
+        db.execute_query(query, tuple(ids))
+
+        return jsonify({'success': True, 'message': f'{len(ids)} data berhasil dihapus'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/edit_pidsus/<int:item_id>', methods=['GET', 'POST'])
 @login_required
