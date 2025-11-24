@@ -45,7 +45,9 @@ def process_import_file(file, tahapan_penanganan=None):
             
             # Handle Tindak_Pidana_Didakwakan for jenis perkara analysis
             tindak_pidana = ''
-            
+            # Variable to collect No_Tanggal_Register_Perkara for KETERANGAN
+            no_tanggal_register = ''
+
             for key, value in row.items():
                 # Clean key names (remove spaces, convert to uppercase)
                 clean_key = str(key).strip().upper()
@@ -76,16 +78,19 @@ def process_import_file(file, tahapan_penanganan=None):
                     std_row['KETERANGAN'] = clean_value
                 # Handle specific format for penuntutan data
                 elif 'NO_TANGGAL_REGISTER_PERKARA' in clean_key:
+                    # Store original value for KETERANGAN
+                    no_tanggal_register = clean_value
+
                     # Extract date from register format like "PDM-\n22/PRBAL/Enz.2/09/2025\n2025-09-01"
                     register_value = clean_value
                     found_date = None
-                    
+
                     # First, try to find YYYY-MM-DD format using regex
                     date_pattern = r'(\d{4})-(\d{2})-(\d{2})'
                     date_match = re.search(date_pattern, register_value)
                     if date_match:
                         found_date = date_match.group(0)
-                    
+
                     # If not found, try to extract from register format like "Enz.2/09/2025" or "/09/2025"
                     if not found_date:
                         # Look for pattern like "/MM/YYYY" at the end
@@ -94,7 +99,7 @@ def process_import_file(file, tahapan_penanganan=None):
                             # Get the last two parts (should be MM and YYYY)
                             year_str = register_parts[-1].split()[0] if register_parts[-1] else ''
                             month_str = register_parts[-2] if len(register_parts) > 1 else ''
-                            
+
                             # Validate they look like numbers
                             if year_str.isdigit() and month_str.isdigit():
                                 year = year_str if len(year_str) == 4 else str(2025)
@@ -107,7 +112,7 @@ def process_import_file(file, tahapan_penanganan=None):
                                 else:
                                     day = '01'
                                 found_date = f"{year}-{month}-{day}"
-                    
+
                     if found_date:
                         std_row['TANGGAL'] = found_date
                     else:
@@ -123,7 +128,11 @@ def process_import_file(file, tahapan_penanganan=None):
             # Use tindak pidana for jenis perkara suggestion if available
             if tindak_pidana and not std_row['JENIS_PERKARA_ORIGINAL']:
                 std_row['JENIS_PERKARA_ORIGINAL'] = tindak_pidana
-            
+
+            # Set KETERANGAN from No_Tanggal_Register_Perkara if available
+            if no_tanggal_register:
+                std_row['KETERANGAN'] = no_tanggal_register
+
             # If no explicit NO, use row index + 1
             if not std_row['NO']:
                 std_row['NO'] = str(i + 1)
