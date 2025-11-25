@@ -67,6 +67,7 @@
                                     <th>PERIODE</th>
                                     <th>TANGGAL</th>
                                     <th>JENIS PERKARA</th>
+                                    <th>NAMA TERSANGKA</th>
                                     <th>PENYIDIKAN</th>
                                     <th>PENUNTUTAN</th>
                                     <th>KETERANGAN</th>
@@ -82,6 +83,7 @@
                                     <td>
                                         <span class="badge bg-secondary">{{ item['JENIS PERKARA'] }}</span>
                                     </td>
+                                    <td>{{ item['NAMA TERSANGKA'] }}</td>
                                     <td>
                                         {% if item.PENYIDIKAN == '1' %}
                                             <span class="badge bg-success">Ya</span>

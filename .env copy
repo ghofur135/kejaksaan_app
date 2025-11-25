@@ -1,0 +1,10 @@
+# Database Configuration
+DB_HOST=ls-bb6ba3d6e32d38edc9b01930d6e73d79c92174ed.ctaoewic65ca.ap-southeast-1.rds.amazonaws.com
+DB_NAME=db_kejaksaan_dev
+DB_USER=kejaksaan
+DB_PASSWORD=kejaksaan2025#!
+DB_PORT=3306
+
+# Flask Configuration
+FLASK_ENV=development
+SECRET_KEY=your_secret_key_here_change_in_production

@@ -50,6 +50,15 @@
                     </div>
                     
                     <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="nama_tersangka" class="form-label">NAMA TERSANGKA</label>
+                                <input type="text" class="form-control" id="nama_tersangka" name="nama_tersangka" placeholder="Masukkan nama tersangka">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label for="penyidikan" class="form-label">PENYIDIKAN</label>
@@ -106,6 +115,7 @@
                                 <th>PERIODE</th>
                                 <th>TANGGAL</th>
                                 <th>JENIS PERKARA</th>
+                                <th>NAMA TERSANGKA</th>
                                 <th>PENYIDIKAN</th>
                                 <th>PENUNTUTAN</th>
                                 <th>KETERANGAN</th>
@@ -118,6 +128,7 @@
                                 <td>{{ item.PERIODE }}</td>
                                 <td>{{ item.TANGGAL }}</td>
                                 <td>{{ item['JENIS PERKARA'] }}</td>
+                                <td>{{ item['NAMA TERSANGKA'] }}</td>
                                 <td>{{ item.PENYIDIKAN }}</td>
                                 <td>{{ item.PENUNTUTAN }}</td>
                                 <td>{{ item.KETERANGAN }}</td>

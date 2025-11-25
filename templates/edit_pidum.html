@@ -64,8 +64,17 @@
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
+                                <label for="identitas_tersangka" class="form-label">Identitas Tersangka</label>
+                                <input type="text" class="form-control" id="identitas_tersangka" name="identitas_tersangka" value="{{ data.get('identitas_tersangka', '') }}" placeholder="Masukkan identitas tersangka">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
                                 <label for="keterangan" class="form-label">Keterangan</label>
-                                <textarea class="form-control" id="keterangan" name="keterangan" rows="1">{{ data.keterangan }}</textarea>
+                                <textarea class="form-control" id="keterangan" name="keterangan" rows="2">{{ data.keterangan }}</textarea>
                             </div>
                         </div>
                     </div>

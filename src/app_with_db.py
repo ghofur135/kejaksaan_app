@@ -458,6 +458,7 @@ def input_pidsus():
                 'PERIODE': request.form['periode'],
                 'TANGGAL': request.form['tanggal'],
                 'JENIS PERKARA': request.form['jenis_perkara'],
+                'NAMA_TERSANGKA': request.form.get('nama_tersangka', ''),
                 'PENYIDIKAN': request.form['penyidikan'],
                 'PENUNTUTAN': request.form['penuntutan'],
                 'KETERANGAN': request.form['keterangan']
@@ -915,6 +916,7 @@ def edit_pidsus(item_id):
                 'PERIODE': request.form['periode'],
                 'TANGGAL': request.form['tanggal'],
                 'JENIS PERKARA': request.form['jenis_perkara'],
+                'NAMA_TERSANGKA': request.form.get('nama_tersangka', ''),
                 'PENYIDIKAN': request.form['penyidikan'],
                 'PENUNTUTAN': request.form['penuntutan'],
                 'KETERANGAN': request.form['keterangan']
@@ -978,6 +980,7 @@ def edit_pidum(item_id):
                 'TANGGAL': request.form['tanggal'],
                 'JENIS PERKARA': request.form['jenis_perkara'],
                 'TAHAPAN_PENANGANAN': request.form['tahapan_penanganan'],
+                'IDENTITAS_TERSANGKA': request.form.get('identitas_tersangka', ''),
                 'KETERANGAN': request.form['keterangan']
             }
             

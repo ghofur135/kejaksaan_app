@@ -56,6 +56,26 @@ class MySQLDatabase:
                     conn.commit()
                     print("Migration completed: 'identitas_tersangka' column added.")
 
+                # Check if nama_tersangka column exists in pidsus_data
+                cursor.execute("""
+                    SELECT COUNT(*) as count
+                    FROM information_schema.COLUMNS
+                    WHERE TABLE_SCHEMA = DATABASE()
+                    AND TABLE_NAME = 'pidsus_data'
+                    AND COLUMN_NAME = 'nama_tersangka'
+                """)
+                result = cursor.fetchone()
+
+                if result['count'] == 0:
+                    # Add the column
+                    print("Migration: Adding 'nama_tersangka' column to pidsus_data...")
+                    cursor.execute("""
+                        ALTER TABLE pidsus_data
+                        ADD COLUMN nama_tersangka TEXT AFTER jenis_perkara
+                    """)
+                    conn.commit()
+                    print("Migration completed: 'nama_tersangka' column added.")
+
                 # Create upaya_hukum_data table if not exists
                 self._create_upaya_hukum_table(cursor, conn)
 
@@ -203,11 +223,11 @@ class MySQLDatabase:
         with self.get_connection() as conn:
             cursor = conn.cursor(dictionary=True)
             query = '''
-                INSERT INTO pidsus_data (no, periode, tanggal, jenis_perkara, penyidikan, penuntutan, keterangan)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO pidsus_data (no, periode, tanggal, jenis_perkara, nama_tersangka, penyidikan, penuntutan, keterangan)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             '''
             cursor.execute(query, (data['NO'], data['PERIODE'], data['TANGGAL'], data['JENIS PERKARA'],
-                                  data['PENYIDIKAN'], data['PENUNTUTAN'], data['KETERANGAN']))
+                                  data.get('NAMA_TERSANGKA', ''), data['PENYIDIKAN'], data['PENUNTUTAN'], data['KETERANGAN']))
             conn.commit()
             return cursor.lastrowid
     
@@ -253,6 +273,7 @@ class MySQLDatabase:
                 'PERIODE': row['periode'],
                 'TANGGAL': row['tanggal'],
                 'JENIS PERKARA': row['jenis_perkara'],
+                'NAMA TERSANGKA': row.get('nama_tersangka', ''),
                 'PENYIDIKAN': row['penyidikan'],
                 'PENUNTUTAN': row['penuntutan'],
                 'KETERANGAN': row['keterangan'],
@@ -312,11 +333,11 @@ class MySQLDatabase:
             cursor = conn.cursor(dictionary=True)
             query = '''
                 UPDATE pidsus_data
-                SET no=%s, periode=%s, tanggal=%s, jenis_perkara=%s, penyidikan=%s, penuntutan=%s, keterangan=%s
+                SET no=%s, periode=%s, tanggal=%s, jenis_perkara=%s, nama_tersangka=%s, penyidikan=%s, penuntutan=%s, keterangan=%s
                 WHERE id=%s
             '''
             cursor.execute(query, (data['NO'], data['PERIODE'], data['TANGGAL'], data['JENIS PERKARA'],
-                                  data['PENYIDIKAN'], data['PENUNTUTAN'], data['KETERANGAN'], item_id))
+                                  data.get('NAMA_TERSANGKA', ''), data['PENYIDIKAN'], data['PENUNTUTAN'], data['KETERANGAN'], item_id))
             conn.commit()
             return cursor.rowcount > 0
     
