@@ -626,7 +626,7 @@ def view_pidsus():
     offset = (page - 1) * per_page
 
     data_query = f"""
-        SELECT id, no, periode, tanggal, jenis_perkara, penyidikan, penuntutan, keterangan, created_at
+        SELECT id, no, periode, tanggal, jenis_perkara, nama_tersangka, penyidikan, penuntutan, keterangan, created_at
         FROM pidsus_data {where_clause}
         ORDER BY DATE(tanggal) DESC, created_at DESC, id DESC
         LIMIT %s OFFSET %s
@@ -641,6 +641,7 @@ def view_pidsus():
             'PERIODE': row['periode'],
             'TANGGAL': row['tanggal'],
             'JENIS PERKARA': row['jenis_perkara'],
+            'NAMA TERSANGKA': row.get('nama_tersangka', ''),
             'PENYIDIKAN': row['penyidikan'],
             'PENUNTUTAN': row['penuntutan'],
             'KETERANGAN': row['keterangan']
