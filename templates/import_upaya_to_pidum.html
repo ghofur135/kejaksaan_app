@@ -25,26 +25,28 @@
                     </ul>
                 </div>
 
-                <form method="POST" action="{{ url_for('import_upaya_to_pidum') }}">
-                    <div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <div>
-                            <span class="badge bg-primary">Total Data: {{ total_rows }}</span>
-                            <button type="button" class="btn btn-sm btn-outline-primary ms-2" onclick="selectAll(true)">
-                                <i class="fas fa-check-square"></i> Pilih Semua
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectAll(false)">
-                                <i class="fas fa-square"></i> Batal Pilih
-                            </button>
-                        </div>
-                        <div>
-                            <button type="button" class="btn btn-sm btn-danger" onclick="deleteSelected()">
-                                <i class="fas fa-trash"></i> Hapus Terpilih (<span id="delete-count">0</span>)
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="deleteAll()">
-                                <i class="fas fa-trash-alt"></i> Hapus Semua
-                            </button>
-                        </div>
+                <!-- Delete buttons outside of form to prevent any conflicts -->
+                <div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <span class="badge bg-primary">Total Data: {{ total_rows }}</span>
+                        <button type="button" class="btn btn-sm btn-outline-primary ms-2" onclick="selectAll(true)">
+                            <i class="fas fa-check-square"></i> Pilih Semua
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectAll(false)">
+                            <i class="fas fa-square"></i> Batal Pilih
+                        </button>
                     </div>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-danger" onclick="deleteSelected()">
+                            <i class="fas fa-trash"></i> Hapus Terpilih (<span id="delete-count">0</span>)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="deleteAll()">
+                            <i class="fas fa-trash-alt"></i> Hapus Semua
+                        </button>
+                    </div>
+                </div>
+
+                <form method="POST" action="{{ url_for('import_upaya_to_pidum') }}" id="import-form">
 
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover table-sm">
@@ -127,7 +129,7 @@
                         <a href="{{ url_for('view_pidum') }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left"></i> Kembali
                         </a>
-                        <button type="submit" class="btn btn-success btn-lg">
+                        <button type="submit" class="btn btn-success btn-lg" id="import-button">
                             <i class="fas fa-check"></i> Import ke PIDUM (<span id="selected-count">{{ total_rows }}</span> data)
                         </button>
                     </div>
@@ -167,6 +169,9 @@
 </style>
 
 <script>
+// Prevent multiple form submissions
+let isSubmitting = false;
+
 function selectAll(checked) {
     document.querySelectorAll('.row-checkbox').forEach(cb => {
         cb.checked = checked;
@@ -195,12 +200,49 @@ document.querySelectorAll('.row-checkbox').forEach(cb => {
 // Initialize delete count on page load
 document.addEventListener('DOMContentLoaded', function() {
     updateSelectedCount();
+
+    // Add form submit handler to prevent multiple submissions
+    const importForm = document.getElementById('import-form');
+    if (importForm) {
+        importForm.addEventListener('submit', function(e) {
+            if (isSubmitting) {
+                console.log('[PREVENT] Form already submitting, preventing duplicate');
+                e.preventDefault();
+                return false;
+            }
+
+            const selectedCount = document.querySelectorAll('.row-checkbox:checked').length;
+            if (selectedCount === 0) {
+                alert('Pilih minimal satu data untuk diimport');
+                e.preventDefault();
+                return false;
+            }
+
+            // Confirm import
+            if (!confirm(`Apakah Anda yakin ingin import ${selectedCount} data ke PIDUM?`)) {
+                e.preventDefault();
+                return false;
+            }
+
+            console.log('[INFO] Submitting import form with ' + selectedCount + ' items');
+            isSubmitting = true;
+
+            // Disable the submit button to prevent double-click
+            const submitBtn = document.getElementById('import-button');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing...';
+            }
+        });
+    }
 });
 
 // Delete single row
 function deleteRow(id) {
+    console.log('[DELETE] deleteRow called for ID:', id);
     if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) return;
 
+    console.log('[DELETE] User confirmed, deleting row ID:', id);
     fetch(`/delete_upaya_hukum/${id}`, {
         method: 'POST',
         headers: {
@@ -225,13 +267,17 @@ function deleteRow(id) {
 
 // Delete selected rows
 function deleteSelected() {
+    console.log('[DELETE] deleteSelected called');
     const checkboxes = document.querySelectorAll('.row-checkbox:checked');
     if (checkboxes.length === 0) {
         showAlert('warning', 'Pilih data yang ingin dihapus');
         return;
     }
 
+    console.log('[DELETE] User wants to delete', checkboxes.length, 'selected rows');
     if (!confirm(`Apakah Anda yakin ingin menghapus ${checkboxes.length} data terpilih?`)) return;
+
+    console.log('[DELETE] User confirmed, proceeding with deleteSelected');
 
     const ids = Array.from(checkboxes).map(cb => {
         const row = cb.closest('tr');
@@ -267,13 +313,17 @@ function deleteSelected() {
 
 // Delete all rows
 function deleteAll() {
+    console.log('[DELETE] deleteAll called');
     const totalRows = document.querySelectorAll('.row-checkbox').length;
     if (totalRows === 0) {
         showAlert('warning', 'Tidak ada data untuk dihapus');
         return;
     }
 
+    console.log('[DELETE] User wants to delete ALL', totalRows, 'rows');
     if (!confirm(`Apakah Anda yakin ingin menghapus SEMUA ${totalRows} data? Tindakan ini tidak dapat dibatalkan.`)) return;
+
+    console.log('[DELETE] User confirmed, proceeding with deleteAll - THIS WILL EMPTY THE TABLE!');
 
     fetch('/delete_all_upaya_hukum', {
         method: 'POST',

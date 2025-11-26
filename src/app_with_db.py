@@ -782,12 +782,15 @@ def import_upaya_to_pidum():
 
     elif request.method == 'POST':
         # Process import
+        print(f"[DEBUG] POST to import_upaya_to_pidum - Starting import process")
         try:
             query = "SELECT * FROM upaya_hukum_data ORDER BY created_at DESC"
             upaya_data = db.execute_query(query)
+            print(f"[DEBUG] Found {len(upaya_data)} rows in upaya_hukum_data")
 
             success_count = 0
             error_count = 0
+            imported_ids = []
 
             for i, row in enumerate(upaya_data):
                 # Check if this row is selected
@@ -815,9 +818,13 @@ def import_upaya_to_pidum():
                 try:
                     insert_pidum_data(pidum_row)
                     success_count += 1
+                    imported_ids.append(row.get('id'))
+                    print(f"[DEBUG] Successfully imported row ID {row.get('id')}")
                 except Exception as e:
                     error_count += 1
-                    print(f"Error inserting row {row.get('id')}: {e}")
+                    print(f"[ERROR] Error inserting row {row.get('id')}: {e}")
+
+            print(f"[DEBUG] Import complete - Success: {success_count}, Error: {error_count}")
 
             if success_count > 0:
                 flash(f'Berhasil import {success_count} data dari Upaya Hukum ke PIDUM', 'success')
@@ -830,7 +837,9 @@ def import_upaya_to_pidum():
             flash(f'Error saat import: {str(e)}', 'error')
             import traceback
             traceback.print_exc()
+            print(f"[ERROR] Exception during import: {e}")
 
+        print(f"[DEBUG] Redirecting to view_pidum")
         return redirect(url_for('view_pidum'))
 
 @app.route('/delete_upaya_hukum/<int:item_id>', methods=['POST'])
@@ -861,15 +870,20 @@ def delete_all_upaya_hukum():
     """Delete all data from upaya_hukum_data table"""
     from models.mysql_database import db
 
+    print(f"[WARNING] delete_all_upaya_hukum called! Is AJAX: {request.headers.get('X-Requested-With') == 'XMLHttpRequest'}")
+
     try:
         query = "DELETE FROM upaya_hukum_data"
         db.execute_query(query)
+
+        print(f"[WARNING] All upaya_hukum_data deleted!")
 
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'success': True, 'message': 'Semua data berhasil dihapus'})
 
         flash('Semua data berhasil dihapus', 'success')
     except Exception as e:
+        print(f"[ERROR] Error in delete_all_upaya_hukum: {e}")
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'success': False, 'message': str(e)}), 500
         flash(f'Error menghapus data: {str(e)}', 'error')
