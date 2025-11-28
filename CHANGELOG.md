@@ -6,6 +6,56 @@ Format berdasarkan [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.3.0] - 2025-11-28
+
+### Added - Fitur Analisa Data Pasal dan Laporan Pelacakan Perkara
+
+#### Analisis Data Pasal
+- `check_data_pasal.py` - Script untuk analisis data pasal yang ada dalam database
+- Identifikasi pasal yang paling sering muncul
+- Statistik frekuensi pasal per jenis perkara
+- Visualisasi data pasal dalam format yang mudah dipahami
+
+#### Dokumentasi Analisis
+- `docs/ANALISA_DATA_PASAL_AKTUAL.md` - Dokumentasi lengkap analisis data pasal
+- `docs/ANALISA_LAPORAN_PELACAKAN_PERKARA.md` - Analisis laporan pelacakan perkara
+- `docs/CSV_TEMPLATE_WITH_PASAL.md` - Template CSV dengan informasi pasal
+- `docs/OPSI_PENYESUAIAN_TABLE_vs_NO_TABLE.md` - Opsi penyesuaian tabel database
+- `docs/REKOMENDASI_PENYESUAIAN_IMPORT.md` - Rekomendasi untuk impor data
+- `docs/VERIFIKASI_DATA_LAPORAN_PELACAKAN.md` - Panduan verifikasi data
+
+#### Laporan Pelacakan Perkara
+- `templates/laporan_pelacakan_perkara.html` - Template baru untuk laporan pelacakan perkara
+- Integrasi dengan sistem laporan yang sudah ada
+- Filter dan pencarian data perkara yang lebih baik
+
+#### Peningkatan Helper Import
+- Update `src/helpers/import_helper.py` - Peningkatan fungsi import data
+- Update `src/helpers/import_pra_penuntutan_helper.py` - Peningkatan import pra penuntutan
+- Validasi data yang lebih baik saat impor
+- Penanganan error yang lebih informatif
+
+#### Peningkatan Database
+- Update `src/models/mysql_database.py` - Peningkatan fungsi database
+- Optimasi query untuk analisis data pasal
+- Support untuk fungsi agregasi baru
+
+#### Aplikasi Utama
+- Update `src/app_with_db.py` - Peningkatan routing dan fungsi aplikasi
+- Route baru untuk analisis data pasal
+- Integrasi laporan pelacakan perkara
+
+#### Konfigurasi
+- Update `.claude/settings.local.json` - Penyesuaian konfigurasi lokal
+- Peningkatan konfigurasi untuk fitur baru
+
+### Fixed
+- Penanganan file dengan nama reserved device di Windows
+- Penambahan nama-nama device reserved ke `.gitignore`
+- Perbaikan error saat git add dengan file problematic
+
+---
+
 ## [1.2.0] - 2025-11-22
 
 ### Added - Fitur Import Upaya Hukum Extended
