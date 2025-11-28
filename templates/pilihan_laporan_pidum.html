@@ -83,12 +83,46 @@
                     </div>
                 </div>
 
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="card h-100 border-info">
+                            <div class="card-header bg-info text-white">
+                                <h5><i class="fas fa-search"></i> Laporan Pelacakan Perkara <span class="badge bg-light text-info">BARU</span></h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <p class="lead">Lacak perjalanan perkara tersangka melalui berbagai tahapan penanganan</p>
+                                        <ul class="list-unstyled">
+                                            <li><i class="fas fa-check text-success"></i> <strong>Track per Tersangka</strong> - Pelacakan berdasarkan nama tersangka</li>
+                                            <li><i class="fas fa-check text-success"></i> <strong>Multi-Tahapan</strong> - Pra Penuntutan, Penuntutan, dan Upaya Hukum</li>
+                                            <li><i class="fas fa-check text-success"></i> <strong>Informasi Pasal</strong> - Menampilkan pasal yang didakwakan</li>
+                                            <li><i class="fas fa-check text-success"></i> <strong>Filter Lengkap</strong> - Filter berdasarkan periode, jenis perkara, dan nama tersangka</li>
+                                            <li><i class="fas fa-check text-success"></i> <strong>Export Excel</strong> - Download laporan dalam format Excel</li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-4 text-center d-flex align-items-center justify-content-center">
+                                        <div>
+                                            <i class="fas fa-route fa-5x text-info mb-3"></i>
+                                            <div>
+                                                <a href="{{ url_for('laporan_pelacakan_perkara') }}" class="btn btn-info btn-lg">
+                                                    <i class="fas fa-search"></i> Buka Laporan Pelacakan
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row mt-5">
                     <div class="col-md-12">
                         <div class="alert alert-info">
                             <h6><i class="fas fa-info-circle"></i> Informasi Laporan PIDUM</h6>
                             <div class="row">
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <p><strong>Laporan Klasik</strong> cocok untuk:</p>
                                     <ul class="mb-0">
                                         <li>Pengguna yang terbiasa dengan format lama</li>
@@ -96,7 +130,7 @@
                                         <li>Analisis data dengan grafik lengkap</li>
                                     </ul>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <p><strong>Laporan Modern</strong> cocok untuk:</p>
                                     <ul class="mb-0">
                                         <li>Tampilan modern dan user-friendly</li>
@@ -104,12 +138,20 @@
                                         <li>Laporan dengan desain clean</li>
                                     </ul>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <p><strong>Laporan Bulanan</strong> cocok untuk:</p>
                                     <ul class="mb-0">
                                         <li>Analisis per periode bulanan</li>
                                         <li>Format tabel terstruktur</li>
                                         <li>Laporan formal dengan layout profesional</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-3">
+                                    <p><strong>Laporan Pelacakan</strong> cocok untuk:</p>
+                                    <ul class="mb-0">
+                                        <li>Tracking perkara per tersangka</li>
+                                        <li>Monitoring progress tahapan</li>
+                                        <li>Analisis data pasal hukum</li>
                                     </ul>
                                 </div>
                             </div>
