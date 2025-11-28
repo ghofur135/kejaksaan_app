@@ -37,6 +37,7 @@ def process_import_file(file, tahapan_penanganan=None):
                 'PERIODE': '',
                 'TANGGAL': '',
                 'JENIS_PERKARA_ORIGINAL': '',
+                'PASAL': '',  # NEW: Dedicated field for pasal
                 'KETERANGAN': '',
                 'TAHAPAN_PENANGANAN': tahapan_penanganan or 'PRA PENUNTUTAN',
                 'IDENTITAS_TERSANGKA': '',
@@ -47,6 +48,8 @@ def process_import_file(file, tahapan_penanganan=None):
             tindak_pidana = ''
             # Variable to collect No_Tanggal_Register_Perkara for KETERANGAN
             no_tanggal_register = ''
+            # Variable to store pasal value
+            pasal_value = ''
 
             for key, value in row.items():
                 # Clean key names (remove spaces, convert to uppercase)
@@ -74,8 +77,12 @@ def process_import_file(file, tahapan_penanganan=None):
                         std_row['KETERANGAN'] = f"Pasal: {clean_value} | {std_row['KETERANGAN']}"
                     else:
                         std_row['KETERANGAN'] = f"Pasal: {clean_value}"
-                elif any(keyword in clean_key for keyword in ['KETERANGAN', 'DESCRIPTION', 'PASAL', 'NOTE', 'PELANGGARAN']):
+                elif any(keyword in clean_key for keyword in ['KETERANGAN', 'DESCRIPTION', 'NOTE']):
                     std_row['KETERANGAN'] = clean_value
+                # NEW: Handle dedicated PASAL column (not PASAL from KETERANGAN)
+                elif 'PASAL' in clean_key and 'DISANGKAKAN' not in clean_key and 'KETERANGAN' not in clean_key:
+                    pasal_value = clean_value
+                    std_row['PASAL'] = clean_value
                 # Handle specific format for penuntutan data
                 elif 'NO_TANGGAL_REGISTER_PERKARA' in clean_key:
                     # Store original value for KETERANGAN
@@ -223,6 +230,7 @@ def prepare_import_data(import_data, jenis_perkara_mapping):
             'TANGGAL': tanggal,
             'JENIS PERKARA': selected_jenis_perkara,
             'TAHAPAN_PENANGANAN': row.get('TAHAPAN_PENANGANAN', 'PRA PENUNTUTAN'),
+            'PASAL': str(row.get('PASAL', '')),  # NEW: Include pasal field
             'IDENTITAS_TERSANGKA': str(row.get('IDENTITAS_TERSANGKA', '')),
             'KETERANGAN': str(row.get('KETERANGAN', ''))
         }

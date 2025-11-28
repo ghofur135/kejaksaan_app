@@ -1,0 +1,71 @@
+# Tempatkan kode route baru di sekitar line 2635, sebelum @app.route('/laporan_pidsus')
+
+@app.route('/laporan_pelacakan_perkara')
+@login_required
+def laporan_pelacakan_perkara():
+    """Laporan Pelacakan Perkara - Track suspect cases across all stages"""
+    from datetime import datetime
+    from models.mysql_database import get_pelacakan_perkara_report_data
+
+    # Get filter parameters
+    bulan = request.args.get('bulan', type=int)
+    tahun = request.args.get('tahun', type=int)
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    jenis_perkara = request.args.get('jenis_perkara')
+    tersangka = request.args.get('tersangka')
+
+    # Default to current year if no filter provided
+    if not tahun and not start_date:
+        tahun = datetime.now().year
+
+    # Get report data
+    try:
+        report_data = get_pelacakan_perkara_report_data(
+            bulan=bulan,
+            tahun=tahun,
+            start_date=start_date,
+            end_date=end_date,
+            jenis_perkara=jenis_perkara,
+            tersangka=tersangka
+        )
+
+        # Calculate statistics
+        total_keseluruhan = len(report_data)
+        total_pra_penuntutan = sum(1 for item in report_data if item['pra_penuntutan'] != '-')
+        total_penuntutan = sum(1 for item in report_data if item['penuntutan'] != '-')
+        total_upaya_hukum = sum(1 for item in report_data if item['upaya_hukum'] != '-')
+        total_ada_pasal = sum(1 for item in report_data if item['pasal'] != '-')
+
+        # Month names for filter
+        month_names = {
+            1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
+            5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
+            9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
+        }
+
+        # Jenis perkara options for filter
+        jenis_perkara_options = [
+            'NARKOBA', 'PERKARA ANAK', 'KESUSILAAN',
+            'JUDI', 'KDRT', 'OHARDA', 'PERKARA LAINNYA'
+        ]
+
+        return render_template('laporan_pelacakan_perkara.html',
+                             report_data=report_data,
+                             total_keseluruhan=total_keseluruhan,
+                             total_pra_penuntutan=total_pra_penuntutan,
+                             total_penuntutan=total_penuntutan,
+                             total_upaya_hukum=total_upaya_hukum,
+                             total_ada_pasal=total_ada_pasal,
+                             bulan=bulan,
+                             tahun=tahun,
+                             start_date=start_date,
+                             end_date=end_date,
+                             jenis_perkara=jenis_perkara,
+                             tersangka=tersangka,
+                             month_names=month_names,
+                             jenis_perkara_options=jenis_perkara_options)
+
+    except Exception as e:
+        flash(f'Error generating report: {str(e)}', 'danger')
+        return redirect(url_for('index'))

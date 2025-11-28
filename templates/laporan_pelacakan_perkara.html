@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}Laporan Pelacakan Perkara - Aplikasi Data PIDUM & PIDSUS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4><i class="fas fa-search"></i> Laporan Pelacakan Perkara{% if tahun %} - Tahun {{ tahun }}{% endif %}</h4>
+            </div>
+            <div class="card-body">
+                <!-- Filter Section -->
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <form method="GET" action="{{ url_for('laporan_pelacakan_perkara') }}" class="row g-2 align-items-end">
+                            <div class="col-md-2">
+                                <label class="form-label">Bulan</label>
+                                <select name="bulan" class="form-select form-select-sm" id="filterBulan">
+                                    <option value="" {% if not bulan %}selected{% endif %}>Semua Bulan</option>
+                                    {% for month_num, month_name in month_names.items() %}
+                                    <option value="{{ month_num }}" {% if bulan == month_num %}selected{% endif %}>
+                                        {{ month_name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <small class="text-muted">Filter bulan/tahun diabaikan jika tanggal dipilih</small>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Tahun</label>
+                                <select name="tahun" class="form-select form-select-sm" id="filterTahun">
+                                    <option value="">Semua Tahun</option>
+                                    {% for year in range(2020, 2031) %}
+                                    <option value="{{ year }}" {% if tahun == year %}selected{% endif %}>{{ year }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Dari Tanggal</label>
+                                <input type="date" name="start_date" class="form-control form-control-sm" value="{{ start_date or '' }}" id="filterStartDate">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Sampai Tanggal</label>
+                                <input type="date" name="end_date" class="form-control form-control-sm" value="{{ end_date or '' }}" id="filterEndDate">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Jenis Perkara</label>
+                                <select name="jenis_perkara" class="form-select form-select-sm" id="filterJenisPerkara">
+                                    <option value="">Semua Jenis</option>
+                                    {% for jp in jenis_perkara_options %}
+                                    <option value="{{ jp }}" {% if jenis_perkara == jp %}selected{% endif %}>{{ jp }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-grid gap-2">
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary btn-sm flex-grow-1"><i class="fas fa-search"></i> Tampilkan</button>
+                                    <a href="{{ url_for('laporan_pelacakan_perkara') }}" class="btn btn-secondary btn-sm"><i class="fas fa-redo"></i> Reset</a>
+                                </div>
+                            </div>
+                        </form>
+
+                        <!-- Search by Name -->
+                        <form method="GET" action="{{ url_for('laporan_pelacakan_perkara') }}" class="row g-2 align-items-end mt-2">
+                            <div class="col-md-10">
+                                <label class="form-label">Cari Nama Tersangka</label>
+                                <input type="text" name="tersangka" class="form-control form-control-sm" placeholder="Masukkan nama tersangka..." value="{{ tersangka or '' }}" id="searchTersangka">
+                                <!-- Preserve other filters -->
+                                <input type="hidden" name="bulan" value="{{ bulan or '' }}">
+                                <input type="hidden" name="tahun" value="{{ tahun or '' }}">
+                                <input type="hidden" name="start_date" value="{{ start_date or '' }}">
+                                <input type="hidden" name="end_date" value="{{ end_date or '' }}">
+                                <input type="hidden" name="jenis_perkara" value="{{ jenis_perkara or '' }}">
+                            </div>
+                            <div class="col-md-2 d-grid">
+                                <button type="submit" class="btn btn-info btn-sm"><i class="fas fa-user-search"></i> Cari</button>
+                            </div>
+                        </form>
+
+                        {% if start_date or end_date %}
+                        <div class="alert alert-info alert-dismissible fade show mt-2 mb-0" role="alert">
+                            <i class="fas fa-info-circle"></i> <strong>Filter Tanggal Aktif:</strong> Filter bulan dan tahun diabaikan. Menampilkan data dari <strong>{{ start_date or 'Awal' }}</strong> sampai <strong>{{ end_date or 'Akhir' }}</strong>.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        {% endif %}
+
+                        {% if tersangka %}
+                        <div class="alert alert-success alert-dismissible fade show mt-2 mb-0" role="alert">
+                            <i class="fas fa-search"></i> <strong>Pencarian Aktif:</strong> Menampilkan data dengan nama tersangka mengandung <strong>"{{ tersangka }}"</strong>.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Statistics Summary -->
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    <div class="col-md-3">
+                                        <h5 class="mb-1">{{ total_keseluruhan }}</h5>
+                                        <small class="text-muted">Total Perkara</small>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <h5 class="mb-1">{{ total_pra_penuntutan }}</h5>
+                                        <small class="text-muted">Pra Penuntutan</small>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <h5 class="mb-1">{{ total_penuntutan }}</h5>
+                                        <small class="text-muted">Penuntutan</small>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <h5 class="mb-1">{{ total_upaya_hukum }}</h5>
+                                        <small class="text-muted">Upaya Hukum</small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <h5 class="mb-1">{{ total_ada_pasal }}</h5>
+                                        <small class="text-muted">Dengan Pasal</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table Report -->
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped table-hover" id="pelacakanTable">
+                        <thead class="table-dark">
+                            <tr style="background-color: #e9ecef !important;">
+                                <th style="color: #000000 !important; vertical-align: middle; text-align: center; width: 50px;">NO</th>
+                                <th style="color: #000000 !important; vertical-align: middle; text-align: center;">NAMA TERSANGKA</th>
+                                <th style="color: #000000 !important; vertical-align: middle; text-align: center;">PASAL</th>
+                                <th style="color: #000000 !important; vertical-align: middle; text-align: center;">JENIS PERKARA</th>
+                                <th style="color: #000000 !important; vertical-align: middle; text-align: center; width: 120px;">PRA PENUNTUTAN</th>
+                                <th style="color: #000000 !important; vertical-align: middle; text-align: center; width: 120px;">PENUNTUTAN</th>
+                                <th style="color: #000000 !important; vertical-align: middle; text-align: center; width: 120px;">UPAYA HUKUM</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if report_data %}
+                                {% for item in report_data %}
+                                <tr>
+                                    <td style="text-align: center;">{{ item.NO }}</td>
+                                    <td>{{ item.nama_tersangka }}</td>
+                                    <td>{{ item.pasal }}</td>
+                                    <td>{{ item.jenis_perkara }}</td>
+                                    <td style="text-align: center;">{{ item.pra_penuntutan }}</td>
+                                    <td style="text-align: center;">{{ item.penuntutan }}</td>
+                                    <td style="text-align: center;">{{ item.upaya_hukum }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted">
+                                        <i class="fas fa-inbox"></i> Tidak ada data untuk filter yang dipilih
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Info Note -->
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> <strong>Keterangan:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>Laporan ini menampilkan pelacakan perkara untuk setiap tersangka melalui berbagai tahapan penanganan</li>
+                        <li>Tanggal yang ditampilkan adalah tanggal terdaftar pada tahapan tertentu</li>
+                        <li>Tanda <strong>"-"</strong> berarti perkara belum melewati tahapan tersebut</li>
+                        <li>Data diurutkan berdasarkan tanggal terakhir (terbaru di atas)</li>
+                    </ul>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Kembali ke Dashboard
+                    </a>
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('export_pelacakan_perkara_excel') }}?bulan={{ bulan or '' }}&tahun={{ tahun or '' }}&start_date={{ start_date or '' }}&end_date={{ end_date or '' }}&jenis_perkara={{ jenis_perkara or '' }}&tersangka={{ tersangka or '' }}" class="btn btn-success">
+                            <i class="fas fa-file-excel"></i> Export Excel
+                        </a>
+                        <button onclick="printReport()" class="btn btn-primary">
+                            <i class="fas fa-print"></i> Print Laporan
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== Laporan Pelacakan Perkara loaded ===');
+});
+
+function printReport() {
+    const tableEl = document.querySelector('#pelacakanTable');
+    const printContent = `
+        <html>
+        <head>
+            <title>Laporan Pelacakan Perkara</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                .header { text-align: center; margin-bottom: 20px; }
+                .info { margin-bottom: 20px; padding: 10px; background: #f5f5f5; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 11px; }
+                th { background-color: #f2f2f2; font-weight: bold; text-align: center; }
+                .text-center { text-align: center; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h2>LAPORAN PELACAKAN PERKARA</h2>
+                <p>KEJAKSAAN NEGERI</p>
+                {% if tahun %}
+                <p>Tahun {{ tahun }}{% if bulan %} - {{ month_names[bulan] }}{% endif %}</p>
+                {% endif %}
+            </div>
+            <div class="info">
+                <strong>Filter:</strong>
+                {% if bulan %}Bulan: {{ month_names[bulan] }},{% endif %}
+                {% if tahun %}Tahun: {{ tahun }}{% endif %}
+                {% if start_date or end_date %}
+                 | Periode: {{ start_date or '-' }} s/d {{ end_date or '-' }}
+                {% endif %}
+                {% if jenis_perkara %}
+                 | Jenis Perkara: {{ jenis_perkara }}
+                {% endif %}
+                {% if tersangka %}
+                 | Tersangka: {{ tersangka }}
+                {% endif %}
+                <br><strong>Total Data:</strong> {{ total_keseluruhan }} perkara
+                <br><strong>Dicetak pada:</strong> ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </div>
+            ${tableEl ? tableEl.outerHTML : ''}
+            <div style="margin-top: 20px; font-size: 11px;">
+                <strong>Keterangan:</strong>
+                <ul>
+                    <li>Tanda "-" berarti perkara belum melewati tahapan tersebut</li>
+                    <li>Tanggal dalam format DD/MM/YYYY</li>
+                </ul>
+            </div>
+        </body>
+        </html>
+    `;
+
+    const w = window.open('', '_blank');
+    w.document.write(printContent);
+    w.document.close();
+    setTimeout(() => { w.print(); }, 800);
+}
+</script>
+{% endblock %}
+
+<style>
+@media print {
+    .btn, .dropdown, .card-header .btn-group, .alert {
+        display: none !important;
+    }
+
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    .table {
+        font-size: 11px;
+    }
+
+    .table th, .table td {
+        padding: 0.3rem !important;
+    }
+}
+</style>
+{% endblock %}

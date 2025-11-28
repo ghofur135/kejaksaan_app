@@ -210,11 +210,11 @@ class MySQLDatabase:
         with self.get_connection() as conn:
             cursor = conn.cursor(dictionary=True)
             query = '''
-                INSERT INTO pidum_data (no, periode, tanggal, jenis_perkara, tahapan_penanganan, identitas_tersangka, keterangan)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO pidum_data (no, periode, tanggal, jenis_perkara, tahapan_penanganan, pasal, identitas_tersangka, keterangan)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             '''
             cursor.execute(query, (data['NO'], data['PERIODE'], data['TANGGAL'], data['JENIS PERKARA'],
-                                  data['TAHAPAN_PENANGANAN'], data.get('IDENTITAS_TERSANGKA', ''), data['KETERANGAN']))
+                                  data['TAHAPAN_PENANGANAN'], data.get('PASAL', ''), data.get('IDENTITAS_TERSANGKA', ''), data['KETERANGAN']))
             conn.commit()
             return cursor.lastrowid
     
@@ -223,11 +223,11 @@ class MySQLDatabase:
         with self.get_connection() as conn:
             cursor = conn.cursor(dictionary=True)
             query = '''
-                INSERT INTO pidsus_data (no, periode, tanggal, jenis_perkara, nama_tersangka, penyidikan, penuntutan, keterangan)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO pidsus_data (no, periode, tanggal, jenis_perkara, pasal, nama_tersangka, penyidikan, penuntutan, keterangan)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             '''
             cursor.execute(query, (data['NO'], data['PERIODE'], data['TANGGAL'], data['JENIS PERKARA'],
-                                  data.get('NAMA_TERSANGKA', ''), data['PENYIDIKAN'], data['PENUNTUTAN'], data['KETERANGAN']))
+                                  data.get('PASAL', ''), data.get('NAMA_TERSANGKA', ''), data['PENYIDIKAN'], data['PENUNTUTAN'], data['KETERANGAN']))
             conn.commit()
             return cursor.lastrowid
     
@@ -258,6 +258,7 @@ class MySQLDatabase:
                 'TANGGAL': row['tanggal'],
                 'JENIS PERKARA': row['jenis_perkara'],
                 'TAHAPAN PENANGANAN': row['tahapan_penanganan'],
+                'PASAL': row.get('pasal', ''),  # NEW: Include pasal
                 'IDENTITAS TERSANGKA': row.get('identitas_tersangka', ''),
                 'KETERANGAN': row['keterangan']
             })
@@ -273,6 +274,7 @@ class MySQLDatabase:
                 'PERIODE': row['periode'],
                 'TANGGAL': row['tanggal'],
                 'JENIS PERKARA': row['jenis_perkara'],
+                'PASAL': row.get('pasal', ''),  # NEW: Include pasal
                 'NAMA TERSANGKA': row.get('nama_tersangka', ''),
                 'PENYIDIKAN': row['penyidikan'],
                 'PENUNTUTAN': row['penuntutan'],
@@ -303,11 +305,11 @@ class MySQLDatabase:
             cursor = conn.cursor(dictionary=True)
             query = '''
                 UPDATE pidum_data
-                SET no=%s, periode=%s, tanggal=%s, jenis_perkara=%s, tahapan_penanganan=%s, identitas_tersangka=%s, keterangan=%s
+                SET no=%s, periode=%s, tanggal=%s, jenis_perkara=%s, tahapan_penanganan=%s, pasal=%s, identitas_tersangka=%s, keterangan=%s
                 WHERE id=%s
             '''
             cursor.execute(query, (data['NO'], data['PERIODE'], data['TANGGAL'], data['JENIS PERKARA'],
-                                  data['TAHAPAN_PENANGANAN'], data.get('IDENTITAS_TERSANGKA', ''), data['KETERANGAN'], item_id))
+                                  data['TAHAPAN_PENANGANAN'], data.get('PASAL', ''), data.get('IDENTITAS_TERSANGKA', ''), data['KETERANGAN'], item_id))
             conn.commit()
             return cursor.rowcount > 0
     
@@ -333,11 +335,11 @@ class MySQLDatabase:
             cursor = conn.cursor(dictionary=True)
             query = '''
                 UPDATE pidsus_data
-                SET no=%s, periode=%s, tanggal=%s, jenis_perkara=%s, nama_tersangka=%s, penyidikan=%s, penuntutan=%s, keterangan=%s
+                SET no=%s, periode=%s, tanggal=%s, jenis_perkara=%s, pasal=%s, nama_tersangka=%s, penyidikan=%s, penuntutan=%s, keterangan=%s
                 WHERE id=%s
             '''
             cursor.execute(query, (data['NO'], data['PERIODE'], data['TANGGAL'], data['JENIS PERKARA'],
-                                  data.get('NAMA_TERSANGKA', ''), data['PENYIDIKAN'], data['PENUNTUTAN'], data['KETERANGAN'], item_id))
+                                  data.get('PASAL', ''), data.get('NAMA_TERSANGKA', ''), data['PENYIDIKAN'], data['PENUNTUTAN'], data['KETERANGAN'], item_id))
             conn.commit()
             return cursor.rowcount > 0
     
@@ -816,6 +818,87 @@ class MySQLDatabase:
             rows = cursor.fetchall()
             return rows
 
+    def get_pelacakan_perkara_report_data(self, bulan=None, tahun=None, start_date=None, end_date=None,
+                                          jenis_perkara=None, tersangka=None):
+        """
+        Get data for Laporan Pelacakan Perkara
+        Returns: List of cases with suspect name, pasal, case type, and dates for each stage
+        Format: No | Nama Tersangka | Pasal | Jenis Perkara | Pra Penuntutan | Penuntutan | Upaya Hukum
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+
+            # Build WHERE conditions
+            where_conditions = ["1=1"]  # Base condition
+            params = []
+
+            if bulan and tahun:
+                where_conditions.append("(MONTH(tanggal) = %s AND YEAR(tanggal) = %s)")
+                params.extend([bulan, tahun])
+            elif tahun:
+                where_conditions.append("YEAR(tanggal) = %s")
+                params.append(tahun)
+
+            if start_date and end_date:
+                where_conditions.append("tanggal BETWEEN %s AND %s")
+                params.extend([start_date, end_date])
+
+            if jenis_perkara:
+                where_conditions.append("jenis_perkara = %s")
+                params.append(jenis_perkara)
+
+            if tersangka:
+                where_conditions.append("identitas_tersangka LIKE %s")
+                params.append(f"%{tersangka}%")
+
+            where_clause = " AND ".join(where_conditions)
+
+            # Main query - aggregate by tersangka and jenis perkara
+            # Use MAX to get pasal (assumes same pasal across stages for same case)
+            # Use MAX CASE WHEN to pivot tahapan into columns
+            query = f"""
+                SELECT
+                    identitas_tersangka as nama_tersangka,
+                    jenis_perkara,
+                    no as nomor_perkara,
+                    MAX(pasal) as pasal,
+                    MAX(CASE WHEN tahapan_penanganan = 'PRA PENUNTUTAN'
+                        THEN DATE_FORMAT(tanggal, '%d/%m/%Y')
+                        ELSE NULL END) as pra_penuntutan,
+                    MAX(CASE WHEN tahapan_penanganan = 'PENUNTUTAN'
+                        THEN DATE_FORMAT(tanggal, '%d/%m/%Y')
+                        ELSE NULL END) as penuntutan,
+                    MAX(CASE WHEN tahapan_penanganan = 'UPAYA HUKUM'
+                        THEN DATE_FORMAT(tanggal, '%d/%m/%Y')
+                        ELSE NULL END) as upaya_hukum,
+                    MIN(tanggal) as earliest_date
+                FROM pidum_data
+                WHERE {where_clause}
+                  AND identitas_tersangka IS NOT NULL
+                  AND identitas_tersangka != ''
+                GROUP BY identitas_tersangka, jenis_perkara, no
+                ORDER BY MIN(tanggal) DESC
+            """
+
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+
+            # Add row numbers and format NULL values as dash
+            result = []
+            for i, row in enumerate(rows, start=1):
+                result.append({
+                    'NO': i,
+                    'nama_tersangka': row['nama_tersangka'] or '-',
+                    'pasal': row['pasal'] or '-',
+                    'jenis_perkara': row['jenis_perkara'] or '-',
+                    'pra_penuntutan': row['pra_penuntutan'] or '-',
+                    'penuntutan': row['penuntutan'] or '-',
+                    'upaya_hukum': row['upaya_hukum'] or '-',
+                    'nomor_perkara': row['nomor_perkara'] or '-'
+                })
+
+            return result
+
 # Create a singleton instance
 db = MySQLDatabase()
 
@@ -919,3 +1002,8 @@ def get_all_upaya_hukum_data():
 def delete_upaya_hukum_item(item_id):
     """Delete single Upaya Hukum item by ID"""
     return db.delete_upaya_hukum_item(item_id)
+
+def get_pelacakan_perkara_report_data(bulan=None, tahun=None, start_date=None, end_date=None,
+                                      jenis_perkara=None, tersangka=None):
+    """Get data for Laporan Pelacakan Perkara"""
+    return db.get_pelacakan_perkara_report_data(bulan, tahun, start_date, end_date, jenis_perkara, tersangka)

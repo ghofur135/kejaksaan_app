@@ -238,7 +238,8 @@ def process_pra_penuntutan_import_file(file):
                 'PERIODE': '1',  # Default periode
                 'TANGGAL': extracted_date,
                 'JENIS_PERKARA_ORIGINAL': pasal_disangkakan,
-                'KETERANGAN': f"SPDP: {tgl_nomor} | Pasal: {pasal_disangkakan}",
+                'PASAL': pasal_disangkakan,  # NEW: Dedicated pasal field
+                'KETERANGAN': f"SPDP: {tgl_nomor}",  # Simplified: no pasal in keterangan anymore
                 'TAHAPAN_PENANGANAN': 'PRA PENUNTUTAN',
                 'TGL_NOMOR_ORIGINAL': tgl_nomor,
                 'PASAL_ORIGINAL': pasal_disangkakan,
@@ -293,6 +294,7 @@ def prepare_pra_penuntutan_data_for_db(import_data, form_data):
             'TANGGAL': tanggal,
             'JENIS PERKARA': jenis_perkara,
             'TAHAPAN_PENANGANAN': 'PRA PENUNTUTAN',
+            'PASAL': str(original_row.get('PASAL', '')),  # NEW: Include pasal
             'IDENTITAS_TERSANGKA': str(identitas_tersangka),
             'KETERANGAN': str(keterangan)
         }
