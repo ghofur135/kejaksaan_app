@@ -1,17 +1,43 @@
 import os
 from dotenv import load_dotenv
+from pathlib import Path
+import re
 
-# Load environment variables
-load_dotenv()
+# Get the project root directory (parent of src)
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from explicit path
+dotenv_path = BASE_DIR / '.env'
+load_dotenv(dotenv_path=dotenv_path)
+
+def read_password_from_env_file(dotenv_path):
+    """Manually read password from .env file to handle # character"""
+    try:
+        with open(dotenv_path, 'r') as f:
+            for line in f:
+                # Match DB_PASSWORD line with quotes
+                match = re.match(r"DB_PASSWORD=['\"](.+)['\"]", line.strip())
+                if match:
+                    return match.group(1)
+                # Match DB_PASSWORD line without quotes (legacy)
+                match = re.match(r"DB_PASSWORD=(.+)", line.strip())
+                if match:
+                    # Don't strip after # if no quotes
+                    value = match.group(1)
+                    return value
+    except Exception:
+        pass
+    return os.getenv('DB_PASSWORD', '')
 
 class Config:
     """Configuration class for the application"""
-    
+
     # Database Configuration
     DB_HOST = os.getenv('DB_HOST', 'localhost')
     DB_NAME = os.getenv('DB_NAME', 'kejaksaan_app')
     DB_USER = os.getenv('DB_USER', 'root')
-    DB_PASSWORD = os.getenv('DB_PASSWORD', '')
+    # Manually read password to handle # character
+    DB_PASSWORD = read_password_from_env_file(dotenv_path)
     DB_PORT = int(os.getenv('DB_PORT', 3306))
     
     # Flask Configuration

@@ -21,7 +21,9 @@
       "Bash(find:*)",
       "Bash(grep:*)",
       "Bash(\"D:\\my-project\\kejaksaan_app\\venv\\Scripts\\python.exe\" check_data_pasal.py)",
-      "Bash(mysql:*)"
+      "Bash(mysql:*)",
+      "Bash(\"D:\\my-project\\kejaksaan_app\\venv\\Scripts\\python.exe\" app_with_db.py)",
+      "Bash(\"D:\\my-project\\kejaksaan_app\\venv\\Scripts\\python.exe\" \"D:\\my-project\\kejaksaan_app\\test_laporan_pelacakan.py\")"
     ],
     "deny": [],
     "ask": []

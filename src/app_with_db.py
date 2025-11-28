@@ -2702,6 +2702,128 @@ def laporan_pelacakan_perkara():
         flash(f'Error generating report: {str(e)}', 'danger')
         return redirect(url_for('index'))
 
+@app.route('/export_pelacakan_perkara_excel')
+@login_required
+def export_pelacakan_perkara_excel():
+    """Export Laporan Pelacakan Perkara to Excel"""
+    from datetime import datetime
+    from models.mysql_database import get_pelacakan_perkara_report_data
+    import pandas as pd
+    import io
+    from openpyxl.styles import Font, PatternFill, Alignment
+
+    # Get filter parameters (same as laporan_pelacakan_perkara)
+    bulan = request.args.get('bulan', type=int)
+    tahun = request.args.get('tahun', type=int)
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    jenis_perkara = request.args.get('jenis_perkara')
+    tersangka = request.args.get('tersangka')
+
+    # Default to current year if no filter provided
+    if not tahun and not start_date:
+        tahun = datetime.now().year
+
+    # Get report data
+    try:
+        report_data = get_pelacakan_perkara_report_data(
+            bulan=bulan,
+            tahun=tahun,
+            start_date=start_date,
+            end_date=end_date,
+            jenis_perkara=jenis_perkara,
+            tersangka=tersangka
+        )
+
+        if not report_data:
+            flash('Tidak ada data untuk diekspor dengan filter yang dipilih', 'warning')
+            return redirect(url_for('laporan_pelacakan_perkara'))
+
+        # Format data for Excel export
+        data = []
+        for item in report_data:
+            data.append({
+                'NO': item['NO'],
+                'NAMA TERSANGKA': item['nama_tersangka'],
+                'PASAL': item['pasal'],
+                'JENIS PERKARA': item['jenis_perkara'],
+                'PRA PENUNTUTAN': item['pra_penuntutan'],
+                'PENUNTUTAN': item['penuntutan'],
+                'UPAYA HUKUM': item['upaya_hukum']
+            })
+
+        # Create DataFrame
+        df = pd.DataFrame(data)
+
+        # Create Excel file
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Pelacakan Perkara', index=False)
+
+            # Get the workbook and worksheet
+            workbook = writer.book
+            worksheet = writer.sheets['Pelacakan Perkara']
+
+            # Style the header
+            header_font = Font(bold=True, color='FFFFFF')
+            header_fill = PatternFill(start_color='4F81BD', end_color='4F81BD', fill_type='solid')
+            header_alignment = Alignment(horizontal='center', vertical='center')
+
+            for cell in worksheet[1]:  # First row (header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_alignment
+
+            # Center align specific columns
+            for row in worksheet.iter_rows(min_row=2, max_row=worksheet.max_row):
+                row[0].alignment = Alignment(horizontal='center')  # NO
+                row[4].alignment = Alignment(horizontal='center')  # PRA PENUNTUTAN
+                row[5].alignment = Alignment(horizontal='center')  # PENUNTUTAN
+                row[6].alignment = Alignment(horizontal='center')  # UPAYA HUKUM
+
+            # Auto-adjust column width
+            for column in worksheet.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = min((max_length + 2), 50)  # Max width 50
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+
+        output.seek(0)
+
+        # Generate filename with timestamp and filters
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filter_info = []
+        if bulan:
+            month_names = {
+                1: 'Jan', 2: 'Feb', 3: 'Mar', 4: 'Apr', 5: 'Mei', 6: 'Jun',
+                7: 'Jul', 8: 'Agt', 9: 'Sep', 10: 'Okt', 11: 'Nov', 12: 'Des'
+            }
+            filter_info.append(month_names[bulan])
+        if tahun:
+            filter_info.append(str(tahun))
+        if jenis_perkara:
+            filter_info.append(jenis_perkara.replace(' ', '_'))
+
+        filter_str = '_'.join(filter_info) if filter_info else 'semua'
+        filename = f"laporan_pelacakan_perkara_{filter_str}_{timestamp}.xlsx"
+
+        return send_file(
+            output,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+
+    except Exception as e:
+        flash(f'Error exporting to Excel: {str(e)}', 'danger')
+        return redirect(url_for('laporan_pelacakan_perkara'))
+
 @app.route('/laporan_pidsus')
 @login_required
 def laporan_pidsus():
