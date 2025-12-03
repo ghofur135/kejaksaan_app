@@ -103,6 +103,7 @@ CREATE TABLE upaya_hukum_data (
 
 | Error | Solusi |
 |-------|--------|
+| ImportError: cannot import 'Config' | Jalankan dari root directory project |
 | Can't connect to MySQL | `net start MySQL80` atau cek `.env` |
 | Table doesn't exist | `python scripts/setup_schema_only.py` |
 | Column doesn't exist | `python scripts/auto_migrate.py` |

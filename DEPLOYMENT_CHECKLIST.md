@@ -87,6 +87,13 @@ DESCRIBE upaya_hukum_data;
 
 ## 🚨 Troubleshooting Cepat
 
+### ❌ Error: "ImportError: cannot import name 'Config'"
+```bash
+# Pastikan menjalankan dari root directory project
+cd kejaksaan_app
+python scripts/check_schema_sync.py
+```
+
 ### ❌ Error: "Can't connect to MySQL"
 ```bash
 # Cek MySQL running
