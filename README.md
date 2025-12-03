@@ -130,20 +130,23 @@ kejaksaan_app/
 │       └── 📊 CSV Tool/            # Tools untuk CSV
 ├── 📂 config/                      # File konfigurasi
 ├── 📂 scripts/                     # Script utility
-│   ├── 🔍 check_data_pasal.py     # Script analisis data pasal (NEW)
+│   ├── 🔍 check_data_pasal.py     # Script analisis data pasal
+│   ├── 🔄 check_schema_sync.py    # Cek sinkronisasi schema (NEW)
+│   ├── 🚀 auto_migrate.py         # Auto migration database (NEW)
 │   └── 🗃️ setup scripts/         # Setup dan migrasi database
 ├── 📂 data/                        # Data aplikasi
 │   └── 📊 csv/                     # File CSV untuk import
 ├── 📂 docs/                        # Dokumentasi
-│   ├── 📋 ANALISA_DATA_PASAL_AKTUAL.md      # Analisis data pasal (NEW)
-│   ├── 📈 ANALISA_LAPORAN_PELACAKAN_PERKARA.md  # Laporan pelacakan (NEW)
-│   ├── 📄 CSV_TEMPLATE_WITH_PASAL.md          # Template CSV dengan pasal (NEW)
+│   ├── 📋 ANALISA_DATA_PASAL_AKTUAL.md      # Analisis data pasal
+│   ├── 📈 ANALISA_LAPORAN_PELACAKAN_PERKARA.md  # Laporan pelacakan
+│   ├── 📄 CSV_TEMPLATE_WITH_PASAL.md          # Template CSV dengan pasal
+│   ├── 🔄 SCHEMA_SYNC_GUIDE.md              # Panduan sinkronisasi schema (NEW)
 │   └── 📚 Dokumentasi lengkap lainnya...
 ├── 📂 static/                      # File statis (CSS, JS, images)
 ├── 📂 templates/                   # Template HTML
 │   ├── 📋 view_pidum.html          # Lihat data PIDUM
 │   ├── ⚖️ view_upaya_hukum.html    # Lihat data Upaya Hukum
-│   ├── 📈 laporan_pelacakan_perkara.html      # Laporan pelacakan (NEW)
+│   ├── 📈 laporan_pelacakan_perkara.html      # Laporan pelacakan
 │   ├── 📥 import_upaya_hukum.html  # Form import upaya hukum
 │   └── 👁️ import_upaya_hukum_preview.html  # Preview import
 ├── 📂 logs/                        # Log files
@@ -173,11 +176,13 @@ pip install -r requirements.txt
 
 ### 3. Setup Database
 ```bash
-# Setup schema database
-python scripts/setup_schema_only.py
+# Opsi 1: Cek dan auto-migrate (RECOMMENDED)
+python scripts/check_schema_sync.py    # Cek schema
+python scripts/auto_migrate.py         # Auto migration
 
-# Test koneksi database
-python scripts/test_mysql_connection.py
+# Opsi 2: Setup manual
+python scripts/setup_schema_only.py    # Setup schema dari awal
+python scripts/test_mysql_connection.py # Test koneksi
 ```
 
 ### 4. Konfigurasi Environment
@@ -258,6 +263,7 @@ python check_data_pasal.py
 - `docs/IMPORT_FEATURE_GUIDE.md` - Panduan import data
 
 ### 🔧 Teknis
+- `docs/SCHEMA_SYNC_GUIDE.md` - **Panduan sinkronisasi schema database** ⭐
 - `docs/MYSQL_MIGRATION_GUIDE.md` - Panduan migrasi database
 - `docs/DEPLOYMENT_GUIDE.md` - Panduan deployment
 - `docs/DEBUGGING_STEPS.md` - Panduan troubleshooting
