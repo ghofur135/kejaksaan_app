@@ -36,12 +36,20 @@ python scripts/auto_migrate.py
 - ✅ Migration applied successfully
 - ✅ Database schema is now up to date
 
-### 5️⃣ Jalankan Aplikasi (1 menit)
+### 5️⃣ Cek Fitur Laporan Pelacakan (1 menit)
+```bash
+python scripts/check_laporan_pelacakan.py
+```
+
+**Output yang diharapkan:**
+- ✅ All checks passed!
+
+### 6️⃣ Jalankan Aplikasi (1 menit)
 ```bash
 python src/app_with_db.py
 ```
 
-**Akses:** http://localhost:5000
+**Akses:** http://localhost:5001
 
 ---
 
@@ -55,6 +63,11 @@ python scripts/test_mysql_connection.py
 ### Cek Struktur Tabel
 ```bash
 python scripts/check_schema_sync.py
+```
+
+### Cek Fitur Laporan Pelacakan
+```bash
+python scripts/check_laporan_pelacakan.py
 ```
 
 ### Lihat Data di Database
@@ -113,6 +126,15 @@ python scripts/setup_schema_only.py
 ```bash
 # Jalankan auto migration
 python scripts/auto_migrate.py
+```
+
+### ❌ Error: "Laporan Pelacakan tidak muncul"
+```bash
+# Cek kelengkapan fitur
+python scripts/check_laporan_pelacakan.py
+
+# Lihat panduan lengkap
+# docs/TROUBLESHOOTING_LAPORAN_PELACAKAN.md
 ```
 
 ### ❌ Error: "Access denied"
