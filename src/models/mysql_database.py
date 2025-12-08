@@ -853,14 +853,14 @@ class MySQLDatabase:
 
             where_clause = " AND ".join(where_conditions)
 
-            # Main query - aggregate by tersangka and jenis perkara
-            # Use MAX to get pasal (assumes same pasal across stages for same case)
+            # Main query - aggregate by tersangka only (merge all stages for same person)
+            # Use MAX to get pasal and dates from all stages
             # Use MAX CASE WHEN to pivot tahapan into columns
             query = f"""
                 SELECT
                     identitas_tersangka as nama_tersangka,
-                    jenis_perkara,
-                    no as nomor_perkara,
+                    MAX(jenis_perkara) as jenis_perkara,
+                    GROUP_CONCAT(DISTINCT no ORDER BY no SEPARATOR ', ') as nomor_perkara,
                     MAX(pasal) as pasal,
                     MAX(CASE WHEN tahapan_penanganan = 'PRA PENUNTUTAN'
                         THEN DATE_FORMAT(tanggal, '%d/%m/%Y')
@@ -876,7 +876,7 @@ class MySQLDatabase:
                 WHERE {where_clause}
                   AND identitas_tersangka IS NOT NULL
                   AND identitas_tersangka != ''
-                GROUP BY identitas_tersangka, jenis_perkara, no
+                GROUP BY identitas_tersangka
                 ORDER BY MIN(tanggal) DESC
             """
 
