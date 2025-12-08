@@ -68,6 +68,7 @@
                                     <th>PERIODE</th>
                                     <th>TANGGAL</th>
                                     <th>JENIS PERKARA</th>
+                                    <th>PASAL</th>
                                     <th>TAHAPAN</th>
                                     <th>IDENTITAS TERSANGKA</th>
                                     <th>KETERANGAN</th>
@@ -82,6 +83,9 @@
                                     <td>{{ item.tanggal }}</td>
                                     <td>
                                         <span class="badge bg-secondary">{{ item.jenis_perkara }}</span>
+                                    </td>
+                                    <td>
+                                        <small>{{ item.pasal if item.pasal else '-' }}</small>
                                     </td>
                                     <td>
                                         <span class="badge bg-info">{{ item.tahapan_penanganan or 'N/A' }}</span>

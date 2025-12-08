@@ -503,7 +503,7 @@ def view_pidum():
     where_clause = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ''
 
     data_query = f"""
-        SELECT id, no, periode, tanggal, jenis_perkara, tahapan_penanganan, identitas_tersangka, keterangan, created_at
+        SELECT id, no, periode, tanggal, jenis_perkara, pasal, tahapan_penanganan, identitas_tersangka, keterangan, created_at
         FROM pidum_data {where_clause}
         ORDER BY DATE(tanggal) DESC, created_at DESC, id DESC
     """
