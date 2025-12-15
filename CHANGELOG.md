@@ -6,6 +6,27 @@ Format berdasarkan [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.3.1] - 2025-12-15
+
+### Fixed - Import Data Penuntutan: Kolom Pasal Tersimpan ke Database
+
+#### 🐛 Bug Fix
+- Kolom "Data Original" (yang berisi pasal seperti "KUHP,Pasal 374/Pasal 372") sekarang tersimpan ke kolom `pasal` di database saat import data penuntutan
+- Sebelumnya data pasal hanya ditampilkan di preview tapi tidak masuk ke database
+
+#### 🔧 Perubahan Teknis
+- **src/app_with_db.py**:
+  - `confirm_import_tahapan()`: Menambahkan pengambilan data `PASAL` dari `original_row.get('PASAL')` atau `original_row.get('JENIS_PERKARA_ORIGINAL')`
+  - `confirm_import_pidum()`: Menambahkan pengambilan data `PASAL`, `IDENTITAS_TERSANGKA`, dan `KETERANGAN`
+  
+- **src/helpers/import_helper.py**:
+  - Saat memproses kolom `TINDAK_PIDANA_DIDAKWAKAN`, nilai pasal sekarang juga disimpan ke field `PASAL`
+
+- **src/models/mysql_database.py**:
+  - Menambahkan migrasi otomatis untuk kolom `pasal` di tabel `pidum_data` jika belum ada
+
+---
+
 ## [1.3.0] - 2025-11-28
 
 ### Added - Fitur Analisa Data Pasal dan Laporan Pelacakan Perkara
