@@ -3,7 +3,7 @@
 Script to insert sample PIDUM data for testing the report system
 """
 
-from src.models.database import insert_pidum_data
+from src.models.mysql_database import insert_pidum_data
 from datetime import datetime
 
 def insert_sample_data():
