@@ -2458,6 +2458,9 @@ def confirm_import_tahapan():
             jenis_perkara = request.form.get(jenis_perkara_key, 'PERKARA LAINNYA')
             identitas_tersangka = request.form.get(f'identitas_tersangka_{i}', original_row.get('IDENTITAS_TERSANGKA', ''))
             keterangan = request.form.get(f'keterangan_{i}', '')
+            
+            # Get PASAL from original data (JENIS_PERKARA_ORIGINAL contains pasal info)
+            pasal = original_row.get('PASAL', '') or original_row.get('JENIS_PERKARA_ORIGINAL', '')
 
             # Prepare data for database insertion
             prepared_row = {
@@ -2466,6 +2469,7 @@ def confirm_import_tahapan():
                 'TANGGAL': tanggal,
                 'JENIS PERKARA': jenis_perkara,
                 'TAHAPAN_PENANGANAN': tahapan_penanganan,
+                'PASAL': str(pasal),
                 'IDENTITAS_TERSANGKA': str(identitas_tersangka),
                 'KETERANGAN': str(keterangan)
             }
@@ -2575,13 +2579,22 @@ def confirm_import_pidum():
             periode = request.form.get(f'periode_{i}', '1')
             tanggal = request.form.get(f'tanggal_{i}', datetime.now().strftime('%Y-%m-%d'))
             jenis_perkara = request.form.get(jenis_perkara_key, 'PERKARA LAINNYA')
+            identitas_tersangka = request.form.get(f'identitas_tersangka_{i}', original_row.get('IDENTITAS_TERSANGKA', ''))
+            keterangan = request.form.get(f'keterangan_{i}', original_row.get('KETERANGAN', ''))
+            
+            # Get PASAL from original data (JENIS_PERKARA_ORIGINAL contains pasal info)
+            pasal = original_row.get('PASAL', '') or original_row.get('JENIS_PERKARA_ORIGINAL', '')
             
             # Prepare data for database insertion
             prepared_row = {
                 'NO': str(original_row.get('NO', i + 1)),
                 'PERIODE': str(periode),
                 'TANGGAL': tanggal,
-                'JENIS PERKARA': jenis_perkara
+                'JENIS PERKARA': jenis_perkara,
+                'TAHAPAN_PENANGANAN': original_row.get('TAHAPAN_PENANGANAN', 'PRA PENUNTUTAN'),
+                'PASAL': str(pasal),
+                'IDENTITAS_TERSANGKA': str(identitas_tersangka),
+                'KETERANGAN': str(keterangan)
             }
             
             prepared_data.append(prepared_row)

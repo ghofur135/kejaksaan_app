@@ -36,6 +36,26 @@ class MySQLDatabase:
             with self.get_connection() as conn:
                 cursor = conn.cursor(dictionary=True)
 
+                # Check if pasal column exists in pidum_data
+                cursor.execute("""
+                    SELECT COUNT(*) as count
+                    FROM information_schema.COLUMNS
+                    WHERE TABLE_SCHEMA = DATABASE()
+                    AND TABLE_NAME = 'pidum_data'
+                    AND COLUMN_NAME = 'pasal'
+                """)
+                result = cursor.fetchone()
+
+                if result['count'] == 0:
+                    # Add the pasal column
+                    print("Migration: Adding 'pasal' column to pidum_data...")
+                    cursor.execute("""
+                        ALTER TABLE pidum_data
+                        ADD COLUMN pasal TEXT AFTER tahapan_penanganan
+                    """)
+                    conn.commit()
+                    print("Migration completed: 'pasal' column added.")
+
                 # Check if identitas_tersangka column exists in pidum_data
                 cursor.execute("""
                     SELECT COUNT(*) as count
@@ -51,7 +71,7 @@ class MySQLDatabase:
                     print("Migration: Adding 'identitas_tersangka' column to pidum_data...")
                     cursor.execute("""
                         ALTER TABLE pidum_data
-                        ADD COLUMN identitas_tersangka TEXT AFTER tahapan_penanganan
+                        ADD COLUMN identitas_tersangka TEXT AFTER pasal
                     """)
                     conn.commit()
                     print("Migration completed: 'identitas_tersangka' column added.")

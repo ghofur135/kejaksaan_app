@@ -70,9 +70,10 @@ def process_import_file(file, tahapan_penanganan=None):
                 elif any(keyword in clean_key for keyword in ['JENIS', 'KATEGORI', 'TYPE']):
                     std_row['JENIS_PERKARA_ORIGINAL'] = clean_value
                 elif 'TINDAK_PIDANA_DIDAKWAKAN' in clean_key:
-                    # This is the main source for jenis perkara analysis
+                    # This is the main source for jenis perkara analysis AND pasal
                     tindak_pidana = clean_value
                     std_row['JENIS_PERKARA_ORIGINAL'] = clean_value
+                    std_row['PASAL'] = clean_value  # Store pasal value
                     if std_row['KETERANGAN']:
                         std_row['KETERANGAN'] = f"Pasal: {clean_value} | {std_row['KETERANGAN']}"
                     else:

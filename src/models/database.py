@@ -21,10 +21,23 @@ def init_database():
                 tanggal TEXT NOT NULL,
                 jenis_perkara TEXT NOT NULL,
                 tahapan_penanganan TEXT NOT NULL,
+                pasal TEXT DEFAULT '',
+                identitas_tersangka TEXT DEFAULT '',
                 keterangan TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        
+        # Add pasal and identitas_tersangka columns if they don't exist (for existing databases)
+        try:
+            cursor.execute('ALTER TABLE pidum_data ADD COLUMN pasal TEXT DEFAULT ""')
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+        
+        try:
+            cursor.execute('ALTER TABLE pidum_data ADD COLUMN identitas_tersangka TEXT DEFAULT ""')
+        except sqlite3.OperationalError:
+            pass  # Column already exists
         
         # Create PIDSUS table
         cursor.execute('''
@@ -76,10 +89,10 @@ def insert_pidum_data(data):
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO pidum_data (no, periode, tanggal, jenis_perkara, tahapan_penanganan, keterangan)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO pidum_data (no, periode, tanggal, jenis_perkara, tahapan_penanganan, pasal, identitas_tersangka, keterangan)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', (data['NO'], data['PERIODE'], data['TANGGAL'], data['JENIS PERKARA'],
-              data['TAHAPAN_PENANGANAN'], data['KETERANGAN']))
+              data['TAHAPAN_PENANGANAN'], data.get('PASAL', ''), data.get('IDENTITAS_TERSANGKA', ''), data['KETERANGAN']))
         conn.commit()
         return cursor.lastrowid
 
@@ -126,6 +139,8 @@ def get_pidum_data_for_export():
             'TANGGAL': row['tanggal'],
             'JENIS PERKARA': row['jenis_perkara'],
             'TAHAPAN PENANGANAN': row['tahapan_penanganan'],
+            'PASAL': row.get('pasal', ''),
+            'IDENTITAS TERSANGKA': row.get('identitas_tersangka', ''),
             'KETERANGAN': row['keterangan']
         })
     return export_data
@@ -169,10 +184,10 @@ def update_pidum_data(item_id, data):
         cursor = conn.cursor()
         cursor.execute('''
             UPDATE pidum_data
-            SET no=?, periode=?, tanggal=?, jenis_perkara=?, tahapan_penanganan=?, keterangan=?
+            SET no=?, periode=?, tanggal=?, jenis_perkara=?, tahapan_penanganan=?, pasal=?, identitas_tersangka=?, keterangan=?
             WHERE id=?
         ''', (data['NO'], data['PERIODE'], data['TANGGAL'], data['JENIS PERKARA'],
-              data['TAHAPAN_PENANGANAN'], data['KETERANGAN'], item_id))
+              data['TAHAPAN_PENANGANAN'], data.get('PASAL', ''), data.get('IDENTITAS_TERSANGKA', ''), data['KETERANGAN'], item_id))
         conn.commit()
         return cursor.rowcount > 0
 
