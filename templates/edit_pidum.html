@@ -73,6 +73,15 @@
                     <div class="row">
                         <div class="col-md-12">
                             <div class="mb-3">
+                                <label for="pasal" class="form-label">Pasal yang Disangkakan</label>
+                                <textarea class="form-control" id="pasal" name="pasal" rows="3" placeholder="Masukkan pasal yang disangkakan">{{ data.get('pasal', '') }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
                                 <label for="keterangan" class="form-label">Keterangan</label>
                                 <textarea class="form-control" id="keterangan" name="keterangan" rows="2">{{ data.keterangan }}</textarea>
                             </div>

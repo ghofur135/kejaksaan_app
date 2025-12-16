@@ -995,6 +995,7 @@ def edit_pidum(item_id):
                 'TANGGAL': request.form['tanggal'],
                 'JENIS PERKARA': request.form['jenis_perkara'],
                 'TAHAPAN_PENANGANAN': request.form['tahapan_penanganan'],
+                'PASAL': request.form.get('pasal', ''),
                 'IDENTITAS_TERSANGKA': request.form.get('identitas_tersangka', ''),
                 'KETERANGAN': request.form['keterangan']
             }
