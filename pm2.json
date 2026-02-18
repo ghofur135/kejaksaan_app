@@ -1,0 +1,26 @@
+{
+  "apps": [
+    {
+      "name": "kejaksaan-app",
+      "script": "run.py",
+      "interpreter": "./venv/bin/python",
+      "env": {
+        "FLASK_ENV": "production",
+        "FLASK_DEBUG": "false"
+      },
+      "cwd": "/home/dhimas/project/kejaksaan",
+      "instances": 1,
+      "exec_mode": "fork",
+      "watch": false,
+      "max_memory_restart": "500M",
+      "error_file": "./logs/pm2-error.log",
+      "out_file": "./logs/pm2-out.log",
+      "log_date_format": "YYYY-MM-DD HH:mm:ss Z",
+      "merge_logs": true,
+      "autorestart": true,
+      "max_restarts": 10,
+      "min_uptime": "10s",
+      "restart_delay": 4000
+    }
+  ]
+}
