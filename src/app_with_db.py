@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, sen
 from functools import wraps
 import pandas as pd
 import os
+import sys
 from datetime import datetime
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
@@ -84,7 +85,14 @@ def generate_pidum_chart(report_data):
     
     return chart_base64
 
-app = Flask(__name__, template_folder='../templates', static_folder='../static')
+    return chart_base64
+
+if getattr(sys, 'frozen', False):
+    template_folder = os.path.join(sys._MEIPASS, 'templates')
+    static_folder = os.path.join(sys._MEIPASS, 'static')
+    app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
+else:
+    app = Flask(__name__, template_folder='../templates', static_folder='../static')
 app.secret_key = 'your_secret_key_here'
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB max file size
 app.config['TEMPLATES_AUTO_RELOAD'] = True  # Force reload templates on change

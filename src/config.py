@@ -1,10 +1,19 @@
 import os
+import sys
 from dotenv import load_dotenv
 from pathlib import Path
 import re
 
-# Get the project root directory (parent of src)
-BASE_DIR = Path(__file__).resolve().parent.parent
+# Get the project root directory
+if getattr(sys, 'frozen', False):
+    # If the application is run as a bundle, the PyInstaller bootloader
+    # extends the sys module by a flag frozen=True and sets the app 
+    # path into variable _MEIPASS'.
+    # However, for .env we want the folder WHERE the exe is located, not the temp _MEIPASS
+    BASE_DIR = Path(sys.executable).parent
+else:
+    # Parent of src (where this file is) -> project root
+    BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load environment variables from explicit path
 dotenv_path = BASE_DIR / '.env'
@@ -65,5 +74,6 @@ class Config:
             'port': Config.DB_PORT,
             'charset': 'utf8mb4',
             'collation': 'utf8mb4_unicode_ci',
-            'autocommit': True
+            'autocommit': True,
+            'use_pure': True
         }
